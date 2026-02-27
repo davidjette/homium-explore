@@ -21,10 +21,13 @@ export async function exportProgramPDF(elementId: string, filename = 'Homium-Pro
       scale: 2,
       useCORS: true,
       allowTaint: true,
+      foreignObjectRendering: false,
       logging: false,
       backgroundColor: '#ffffff',
       windowWidth: element.scrollWidth,
       windowHeight: element.scrollHeight,
+      removeContainer: true,
+      imageTimeout: 5000,
     })
 
     if (canvas.width === 0 || canvas.height === 0) {

@@ -20,7 +20,8 @@ export default function PdfExportButton({ elementId, filename }: Props) {
       trackEvent('pdf_export')
     } catch (err) {
       console.error('PDF export failed:', err)
-      setError('PDF export failed. Try again or use your browser\'s Print to PDF.')
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(`Export failed: ${msg}`)
     } finally {
       setExporting(false)
     }
