@@ -7,7 +7,7 @@ export function LandingNav() {
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border">
       <div className="max-w-[1100px] mx-auto px-7 flex items-center justify-between h-16">
         <Link to="/" className="flex items-center">
-          <img src="/homium-wordmark.svg" alt="Homium" className="h-7" />
+          <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-7" />
         </Link>
         <div className="hidden sm:flex items-center gap-8">
           <AnchorLink href="#programs">Programs</AnchorLink>
@@ -31,7 +31,7 @@ export function ToolNav() {
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border">
       <div className="max-w-[1100px] mx-auto px-7 flex items-center justify-between h-16">
         <Link to="/" className="flex items-center">
-          <img src="/homium-wordmark.svg" alt="Homium" className="h-7" />
+          <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-7" />
         </Link>
         <div className="hidden sm:flex items-center gap-8">
           <RouteLink to="/explore" active={pathname === '/explore'}>Explore</RouteLink>
@@ -101,7 +101,7 @@ export function Footer() {
         <div className="flex flex-col sm:flex-row justify-between items-start gap-8">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <img src="/homium-wordmark.svg" alt="Homium" className="h-6 brightness-0 invert" />
+              <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-6 brightness-0 invert" />
             </div>
             <p className="font-body font-light text-sm max-w-xs">
               Shared appreciation mortgages that make homeownership accessible while creating sustainable returns.

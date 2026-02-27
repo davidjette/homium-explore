@@ -3,6 +3,8 @@ import { Container } from '../../design-system/Layout'
 import { Body, Label } from '../../design-system/Typography'
 import { Button } from '../../design-system/Button'
 
+const BASE = import.meta.env.BASE_URL
+
 export default function Hero() {
   return (
     <section
@@ -11,7 +13,7 @@ export default function Hero() {
       {/* Background image with overlay */}
       <div
         className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/assets/images/homiumbackground.jpg')" }}
+        style={{ backgroundImage: `url('${BASE}assets/images/homiumbackground.jpg')` }}
       />
       <div className="absolute inset-0 bg-white/[0.72]" />
 

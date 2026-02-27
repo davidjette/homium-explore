@@ -1,19 +1,21 @@
 import { Container } from '../../design-system/Layout'
 import { H2, Body, Label } from '../../design-system/Typography'
 
+const BASE = import.meta.env.BASE_URL
+
 const PROGRAMS = [
   {
     location: 'Detroit, Michigan',
     name: 'Tobias Harris Homeownership Initiative',
     description: 'Tobias Harris partners with Homium to bring a new path to homeownership to Detroit — no monthly payments, just a fair, sustainable way for families to build equity and stay rooted in their communities.',
-    image: '/assets/images/pexels-bernardino-munoz-3767003-5796988.jpg',
+    image: `${BASE}assets/images/pexels-bernardino-munoz-3767003-5796988.jpg`,
     url: 'https://www.thhidetroit.com/',
   },
   {
     location: 'Utah',
     name: 'Utah Dream Fund',
     description: 'Fair, innovative financing helps Utah families build wealth and strengthen communities. The Utah Dream Fund bridges the affordability gap and enables early access to homeownership through Promise Partnership Utah.',
-    image: '/assets/images/utahlandscape.png',
+    image: `${BASE}assets/images/utahlandscape.png`,
     url: 'https://www.utahdreamfund.com/',
   },
 ]

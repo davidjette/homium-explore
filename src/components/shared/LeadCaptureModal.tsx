@@ -12,7 +12,7 @@ export default function LeadCaptureModal({ onSubmit, prefilledState }: Props) {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-dark/60 backdrop-blur-sm p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 max-h-[90vh] overflow-y-auto">
         <div className="text-center mb-6">
-          <img src="/homium-wordmark.svg" alt="Homium" className="h-6 mx-auto mb-4" />
+          <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-6 mx-auto mb-4" />
           <H2>Your Program Analysis is Ready</H2>
           <Body className="mt-2">
             Enter your details to view your 30-year program projections, borrower impact analysis,
