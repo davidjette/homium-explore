@@ -9,9 +9,9 @@ export default function Landing() {
   return (
     <>
       <Hero />
+      <VideoEmbed />
       <ProgramCards />
       <BorrowerImpact />
-      <VideoEmbed />
       <NewsGrid />
       <CallToAction />
     </>

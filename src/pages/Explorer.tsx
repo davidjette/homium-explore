@@ -10,6 +10,9 @@ import { trackEvent } from '../lib/analytics'
 import { STATE_NAMES } from '../design-system/Map'
 import StateZoomMap from '../design-system/StateZoomMap'
 
+const BASE = import.meta.env.BASE_URL
+const MAP_BG_URL = `${BASE}assets/images/us-map-outline.svg`
+
 const SORTED_STATES = Object.entries(STATE_NAMES)
   .sort(([, a], [, b]) => a.localeCompare(b))
 
@@ -151,6 +154,27 @@ export default function Explorer() {
 
       {/* ── State Affordability Gap Analysis (DGA-style) ── */}
       <section id="explore" className="bg-sectionAlt py-[72px] relative overflow-hidden">
+        {/* CSS-mask map background — fades out when state selected */}
+        <div
+          className="absolute inset-0 pointer-events-none transition-opacity duration-400"
+          style={{ opacity: selectedState ? 0 : 1 }}
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundColor: 'rgba(61, 122, 88, 0.35)',
+              WebkitMaskImage: `url('${MAP_BG_URL}')`,
+              maskImage: `url('${MAP_BG_URL}')`,
+              WebkitMaskSize: '82% auto',
+              maskSize: '82% auto',
+              WebkitMaskRepeat: 'no-repeat',
+              maskRepeat: 'no-repeat',
+              WebkitMaskPosition: 'center center',
+              maskPosition: 'center center',
+            }}
+          />
+        </div>
+
         <Container>
           {/* Section Header */}
           <div className="text-center mb-3 relative z-10 pt-9">
@@ -177,15 +201,6 @@ export default function Explorer() {
 
           {/* Tool Area */}
           <div className="relative z-10">
-            {/* Faint US map background — visible when no state selected */}
-            {!selectedState && (
-              <div className="flex justify-center py-8">
-                <div className="w-[82%] max-w-[700px] opacity-[0.12]">
-                  <StateZoomMap className="w-full" />
-                </div>
-              </div>
-            )}
-
             {/* Loading spinner */}
             {selectedState && stateLoading && (
               <div className="text-center py-12">
