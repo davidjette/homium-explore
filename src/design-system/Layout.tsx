@@ -10,14 +10,9 @@ export function LandingNav() {
           <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-7" />
         </Link>
         <div className="hidden sm:flex items-center gap-8">
+          <AnchorLink href="#affordability">Affordability Tool</AnchorLink>
           <AnchorLink href="#programs">Programs</AnchorLink>
           <AnchorLink href="#news">News</AnchorLink>
-          <Link
-            to="/explore"
-            className="font-body font-bold text-[12px] uppercase tracking-[1.5px] bg-green text-white px-4 py-2 rounded-md hover:bg-greenDark transition-colors"
-          >
-            Affordability Tool
-          </Link>
         </div>
       </div>
     </nav>

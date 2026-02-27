@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { Container } from '../../design-system/Layout'
 import { Body, Label } from '../../design-system/Typography'
 import { Button } from '../../design-system/Button'
@@ -31,14 +30,14 @@ export default function Hero() {
             to homeownership for working families.
           </Body>
           <div className="flex flex-wrap items-center gap-4 mt-10">
-            <Link to="/explore">
+            <a href="#affordability">
               <Button size="lg">
                 Explore Your Market
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                  <path d="M12 5v14M19 12l-7 7-7-7"/>
                 </svg>
               </Button>
-            </Link>
+            </a>
             <a href="#programs">
               <Button variant="outline" size="lg">Explore Programs</Button>
             </a>
