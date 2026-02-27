@@ -104,16 +104,20 @@ export default function Program() {
   const yr10 = blendedYr10
   const yr30 = blended.length >= 30 ? blended[29] : null
 
-  // Chart data
-  const chartData = blended.map(y => ({
-    year: y.calendarYear,
-    equityCreated: Math.round(y.totalEquityCreated),
-    activeHomeowners: y.activeHomeowners,
-    fundNAV: Math.round(y.fundNAV || y.fundBalance),
-    roi: y.roiCumulative,
-    returnedCapital: Math.round(y.returnedCapital),
-    totalHomeowners: y.totalHomeownersCum,
-  }))
+  // Chart data — accumulate returned capital into a running total
+  let cumulativeReturns = 0
+  const chartData = blended.map(y => {
+    cumulativeReturns += (y.returnedCapital || 0)
+    return {
+      year: y.calendarYear,
+      equityCreated: Math.round(y.totalEquityCreated),
+      activeHomeowners: y.activeHomeowners,
+      fundValue: Math.round(y.fundNAV || y.fundBalance),
+      roi: y.roiCumulative,
+      cumulativeReturns: Math.round(cumulativeReturns),
+      totalHomeowners: y.totalHomeownersCum,
+    }
+  })
 
   const totalRaise = fund?.raise?.totalRaise || 25_000_000
   const programName = fund?.name || `${stateName} Homeownership Program`
@@ -266,17 +270,17 @@ export default function Program() {
                 </ResponsiveContainer>
               </Card>
 
-              {/* Fund NAV */}
+              {/* Fund Value & Returns */}
               <Card>
-                <Label className="block mb-4">Fund NAV</Label>
+                <Label className="block mb-4">Fund Value & Returns</Label>
                 <ResponsiveContainer width="100%" height={280}>
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
                     <XAxis dataKey="year" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} />
                     <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={v => `$${(v / 1e6).toFixed(0)}M`} />
                     <Tooltip formatter={(v) => fmtDollar(Number(v))} labelFormatter={l => `Year ${l}`} />
-                    <Line type="monotone" dataKey="fundNAV" stroke={CHART_COLORS.dark} strokeWidth={2} dot={false} name="Fund NAV" />
-                    <Line type="monotone" dataKey="returnedCapital" stroke={CHART_COLORS.greenLight} strokeWidth={2} dot={false} name="Returned Capital" />
+                    <Line type="monotone" dataKey="fundValue" stroke={CHART_COLORS.dark} strokeWidth={2} dot={false} name="Fund Value" />
+                    <Line type="monotone" dataKey="cumulativeReturns" stroke={CHART_COLORS.green} strokeWidth={2} dot={false} name="Cumulative Returns" />
                   </LineChart>
                 </ResponsiveContainer>
               </Card>
