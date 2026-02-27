@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+/* DGA Design Tokens → Tailwind theme */
+@theme {
+  --color-green: #3D7A58;
+  --color-greenDark: #2E5E43;
+  --color-greenLight: #f0f7f4;
+  --color-dark: #1A2930;
+  --color-gray: #555555;
+  --color-lightGray: #888888;
+  --color-border: #E5E5E0;
+  --color-sectionAlt: #F7F7F4;
+
+  --font-heading: "Taviraj", serif;
+  --font-body: "Ubuntu", sans-serif;
+}
+
+/* Base styles */
+body {
+  margin: 0;
+  font-family: "Ubuntu", sans-serif;
+  font-weight: 300;
+  color: #555555;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Selection */
+::selection {
+  background: rgba(61, 122, 88, 0.15);
+  color: #1A2930;
+}
+
+/* Custom range slider */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #E5E5E0;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #3D7A58;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #3D7A58;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* Number input — hide spinner */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
