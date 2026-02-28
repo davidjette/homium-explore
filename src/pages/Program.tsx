@@ -397,7 +397,7 @@ export default function Program() {
             <Button onClick={() => navigate('/design')}>
               Edit Program
             </Button>
-            <PdfExportButton elementId="program-content" filename={`Homium-${stateName || 'Program'}-Analysis.pdf`} />
+            <PdfExportButton fund={fund} programName={programName} />
             <Button variant="outline" onClick={() => navigate('/explore')}>
               Explore Another Market
             </Button>
