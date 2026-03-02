@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: udf-fund-model
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: server
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: node dist/db/migrate.js; node dist/api/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RESEND_API_KEY
+        sync: false
+    healthCheckPath: /health
+    autoDeploy: true

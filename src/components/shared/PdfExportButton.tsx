@@ -18,7 +18,7 @@ export default function PdfExportButton({ fund, programName }: Props) {
     setError('')
     try {
       await downloadProformaPDF(fund, programName)
-      trackEvent('pdf_export', { programName })
+      trackEvent('pdf_export', { programName: programName || 'unnamed' })
     } catch (err) {
       console.error('PDF export failed:', err)
       const msg = err instanceof Error ? err.message : String(err)
