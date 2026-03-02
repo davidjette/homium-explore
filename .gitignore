@@ -3,3 +3,8 @@ dist/
 .env
 .env.local
 *.log
+
+# Server (backend)
+server/node_modules/
+server/dist/
+server/.env

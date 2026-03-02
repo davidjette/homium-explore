@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { Button } from '../../design-system/Button'
-import { exportProgramPDF } from '../../lib/pdfExport'
+import { downloadProformaPDF } from '../../lib/api'
 import { trackEvent } from '../../lib/analytics'
+import type { FundConfig } from '../../lib/types'
 
 interface Props {
-  elementId: string
-  filename?: string
+  fund: FundConfig
+  programName?: string
 }
 
-export default function PdfExportButton({ elementId, filename }: Props) {
+export default function PdfExportButton({ fund, programName }: Props) {
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
 
@@ -16,8 +17,8 @@ export default function PdfExportButton({ elementId, filename }: Props) {
     setExporting(true)
     setError('')
     try {
-      await exportProgramPDF(elementId, filename)
-      trackEvent('pdf_export')
+      await downloadProformaPDF(fund, programName)
+      trackEvent('pdf_export', { programName: programName || 'unnamed' })
     } catch (err) {
       console.error('PDF export failed:', err)
       const msg = err instanceof Error ? err.message : String(err)
