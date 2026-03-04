@@ -2,7 +2,7 @@
 
 A full-stack platform for designing Homium shared-appreciation homeownership programs and generating investor-grade pro forma reports. Users select a target geography, configure fund parameters, and instantly model 30-year outcomes with PDF export.
 
-**Live:** [homium-explore](https://djette.github.io/homium-explore/) (frontend) | [API](https://udf-fund-model.onrender.com/health) (backend)
+**Live:** [homium-explore](https://davidjette.github.io/homium-explore/) (frontend) | [API](https://udf-fund-model.onrender.com/health) (backend)
 
 ## Architecture
 
@@ -37,7 +37,8 @@ homium-explore/
 │   ├── hooks/                  # useLeadCapture
 │   ├── lib/
 │   │   ├── api.ts              # Backend API client (fetch wrappers)
-│   │   ├── types.ts            # Shared TypeScript types (FundConfig, etc.)
+│   │   ├── types.ts            # Shared TypeScript types (FundConfig, WizardState, etc.)
+│   │   ├── payoff.ts           # Log-normal payoff schedule generator + presets
 │   │   ├── analytics.ts        # Event tracking
 │   │   └── leadCapture.ts      # Lead form logic
 │   └── pages/
@@ -62,6 +63,7 @@ homium-explore/
 │   │   │   ├── cohort-waterfall.ts # Year-by-year equity/balance calcs
 │   │   │   ├── blender.ts      # Weighted scenario blending (LO/MID/HI)
 │   │   │   ├── affordability.ts # Affordability gap calculation
+│   │   │   ├── topoff-calculator.ts # Top-off sensitivity analysis (HPA vs wage growth)
 │   │   │   └── share-conversion.ts # Share issuance math
 │   │   ├── reports/
 │   │   │   ├── proforma-report.ts  # 5-page HTML template (36KB)
@@ -70,7 +72,7 @@ homium-explore/
 │   │   │   ├── email-service.ts    # Resend email wrapper
 │   │   │   └── us-map-paths.ts     # SVG path data for state map
 │   │   ├── integrations/
-│   │   │   └── housing-data.ts # State/county/ZIP data queries (Neon)
+│   │   │   └── housing-data.ts # State/county/ZIP data queries (Neon + external API fallback)
 │   │   └── db/
 │   │       ├── pool.ts         # PostgreSQL connection (Neon)
 │   │       ├── migrate.ts      # Migration runner
@@ -82,7 +84,8 @@ homium-explore/
 │   │   │   ├── 002_generic_funds.sql   # Generic fund tables
 │   │   │   └── 003_housing_data.sql    # Housing data tables
 │   │   └── seed/
-│   │       └── seed.ts
+│   │       ├── seed.ts
+│   │       └── seed-housing.ts   # Seed county/ZIP data from external API
 │   ├── test/                   # Vitest test suite (9 files)
 │   ├── scripts/
 │   │   └── ingest-housing-data.ts  # ArcGIS XLSX → Neon ingestion
@@ -107,8 +110,28 @@ Built with **React 19**, **React Router 7**, **Tailwind CSS 4**, and **Recharts*
 |-------|------|-------------|
 | `/` | Landing | Homepage with affordability tool, program cards, video embed |
 | `/explore` | Explorer | Interactive map — select state/county, view housing data |
-| `/design` | Studio | Fund design wizard — geography, raise, fees, scenarios |
+| `/design` | Studio | 4-step fund design wizard with live preview |
 | `/program` | Program | Model results: 30-year projections, charts, PDF export |
+
+### Studio Wizard Features
+
+The `/design` page is a 4-step wizard for designing shared appreciation programs:
+
+1. **Choose Your Market** — State, county, and ZIP code selection with real-time market data. Optional fund naming.
+2. **Define Your Borrower** — Target AMI, home price, interest rate, down payment configuration.
+3. **Design Your Program** — Homium SAM percentage, program fees, mutual-exclusion fund sizing (fixed home count or total raise).
+4. **Model Your Fund** — Management fees, reinvestment toggle, payoff schedule (Early/Moderate/Long-term presets with peak year and concentration sliders), and optional affordability sensitivity analysis.
+
+**Direct links** — Pre-populate the wizard via URL params:
+```
+/design?state=UT&county=Salt+Lake&zip=84104&name=Brix+on+Tenth
+```
+
+**Geography drill-down** — State → County → ZIP with market data updating at each level. County/ZIP data for all 50 states via external API fallback with in-memory caching.
+
+**Payoff schedule** — Log-normal distribution with 3 presets and fine-grained sliders. Inline SVG sparkline preview.
+
+**Affordability sensitivity** — Optional analysis showing top-off capital needed when HPA outpaces wage growth (only available when reinvesting proceeds).
 
 ### Design System
 
@@ -117,7 +140,7 @@ Custom component library in `src/design-system/`: Button, Card, Layout (nav + fo
 ### State Management
 
 - **TanStack Query** for server state (housing data, model results)
-- **React Router** location state for passing fund config between pages
+- **sessionStorage** for passing wizard results to the Program page (bypasses lead capture gate)
 - No global state library — data flows through the wizard linearly
 
 ### API Client
@@ -145,13 +168,14 @@ Key types (from `server/src/engine/types.ts`):
 
 ### PDF Report Pipeline
 
-Generates a **5-page landscape pro forma** PDF:
+Generates a **5–6 page landscape pro forma** PDF:
 
 1. **Cover** — Program name, geography, key metrics
 2. **Opportunity** — Affordability analysis, market data
 3. **Detail** — 30-year fund projections table
 4. **Charts** — Equity growth, homeowner count, ROI visualizations
-5. **Disclaimer** — Legal language
+5. **Affordability Sensitivity** *(optional)* — Top-off schedule, home value vs income divergence chart, 30-year summary (only included when user opts in)
+6. **Disclaimer** — Legal language
 
 Pipeline: `report-routes.ts` builds fund data → `proforma-report.ts` generates self-contained HTML with inline CSS → `pdf-generator.ts` renders via Puppeteer (using `@sparticuz/chromium` on Render for serverless compatibility) → returns PDF buffer.
 
@@ -164,7 +188,8 @@ Concurrency is limited to one PDF at a time (Puppeteer is memory-heavy on the fr
 |--------|------|-------------|
 | GET | `/api/v2/funds/housing/states` | All 50 states + DC with median income/home price |
 | GET | `/api/v2/funds/housing/state/:state` | Single state data |
-| GET | `/api/v2/funds/housing/state/:state/counties` | Counties in a state |
+| GET | `/api/v2/funds/housing/state/:state/counties` | Counties in a state (DB + external API fallback) |
+| GET | `/api/v2/funds/housing/state/:state/zips` | ZIP codes in a state (DB + external API fallback) |
 | GET | `/api/v2/funds/housing/county/:state/:county` | Single county data |
 | GET | `/api/v2/funds/housing/affordability` | Affordability analysis with query params |
 
@@ -204,16 +229,26 @@ Concurrency is limited to one PDF at a time (Puppeteer is memory-heavy on the fr
 
 | Table | Records | Description |
 |-------|---------|-------------|
-| `states` | 51 | State abbreviation, name, median income, median home price, median rent |
-| `counties` | ~3,200 | County-level income, home price, rent by state |
-| `zip_codes` | ~33,000 | ZIP-level housing data with city, state, geometry |
+| `housing_states` | 51 | State abbreviation, name, median income, median home price, median rent |
+| `housing_counties` | ~30 (UT seeded) | County-level income, home price, rent by state |
+| `housing_zips` | ~240 (UT seeded) | ZIP-level housing data with city, county, state |
 | `fund_configs` | Variable | Saved fund configurations |
 | `fund_scenarios` | Variable | Saved scenario definitions |
 | `fund_results` | Variable | Saved model run results |
 
 Migrations run automatically on deploy (`node dist/db/migrate.js` before server start).
 
-Housing data is ingested from ArcGIS XLSX files via `server/scripts/ingest-housing-data.ts`.
+**Data sources:**
+- **Neon DB** — Utah county/ZIP data seeded via `server/db/seed/seed-housing.ts`
+- **External API fallback** — For states not seeded locally, the backend fetches ZIP-level data from an external housing API (`unabashed-empathy.onrender.com`), aggregates by county, and caches in memory. First request per state takes a few seconds; subsequent requests are instant.
+- **State-level data** — All 50 states available via external API fallback in `housing-data.ts`
+
+To seed additional states:
+```bash
+cd server
+npx tsx db/seed/seed-housing.ts CO    # Seed Colorado
+npx tsx db/seed/seed-housing.ts       # Seed all states with known zip prefixes
+```
 
 ## Getting Started
 
@@ -276,7 +311,7 @@ Automatic on push to `main`. Render watches this repo and deploys from the `serv
 Build: `npm install --include=dev && npm run build` (TypeScript compilation)
 Start: `node dist/db/migrate.js; node dist/api/server.js` (migrations then server)
 
-The service is named `udf-fund-model` and runs on the free tier in the Oregon region.
+The service is named `udf-fund-model` and runs on the premium tier.
 
 ## Environment Variables
 
