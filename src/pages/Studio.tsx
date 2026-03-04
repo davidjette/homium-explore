@@ -271,6 +271,7 @@ export default function Studio() {
         },
         fullResult: result,
         topOffSchedule: result.topOffSchedule,
+        includeAffordabilitySensitivity: wizard.includeAffordabilitySensitivity,
       }))
       sessionStorage.setItem('programState', wizard.state)
       sessionStorage.setItem('programStateName', wizard.stateName)
@@ -752,17 +753,33 @@ function StepFund({ wizard, defaultScenarios, effectiveRaise, borrowerHomePrice,
           />
         </div>
 
-        <div className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            id="reinvest"
-            checked={wizard.reinvestProceeds}
-            onChange={e => onUpdate({ reinvestProceeds: e.target.checked })}
-            className="w-4 h-4 accent-green"
-          />
-          <label htmlFor="reinvest" className="font-body text-dark text-base cursor-pointer">
-            Reinvest net proceeds
-          </label>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="reinvest"
+              checked={wizard.reinvestProceeds}
+              onChange={e => onUpdate({ reinvestProceeds: e.target.checked })}
+              className="w-4 h-4 accent-green"
+            />
+            <label htmlFor="reinvest" className="font-body text-dark text-base cursor-pointer">
+              Reinvest net proceeds
+            </label>
+          </div>
+          {wizard.reinvestProceeds && (
+            <div className="flex items-center gap-3 ml-7">
+              <input
+                type="checkbox"
+                id="includeTopOff"
+                checked={wizard.includeAffordabilitySensitivity}
+                onChange={e => onUpdate({ includeAffordabilitySensitivity: e.target.checked })}
+                className="w-4 h-4 accent-green"
+              />
+              <label htmlFor="includeTopOff" className="font-body text-dark text-base cursor-pointer">
+                Include affordability sensitivity analysis
+              </label>
+            </div>
+          )}
         </div>
 
         {/* ── Payoff Schedule ── */}

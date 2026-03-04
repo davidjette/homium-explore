@@ -7,9 +7,10 @@ import type { FundConfig } from '../../lib/types'
 interface Props {
   fund: FundConfig
   programName?: string
+  includeAffordabilitySensitivity?: boolean
 }
 
-export default function PdfExportButton({ fund, programName }: Props) {
+export default function PdfExportButton({ fund, programName, includeAffordabilitySensitivity }: Props) {
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
 
@@ -17,7 +18,7 @@ export default function PdfExportButton({ fund, programName }: Props) {
     setExporting(true)
     setError('')
     try {
-      await downloadProformaPDF(fund, programName)
+      await downloadProformaPDF(fund, programName, includeAffordabilitySensitivity)
       trackEvent('pdf_export', { programName: programName || 'unnamed' })
     } catch (err) {
       console.error('PDF export failed:', err)

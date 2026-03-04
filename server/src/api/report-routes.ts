@@ -78,7 +78,7 @@ router.post('/report/email', async (req, res) => {
     });
   }
 
-  const { fund, email, recipientName, programName } = req.body;
+  const { fund, email, recipientName, programName, includeAffordabilitySensitivity } = req.body;
   if (!fund) {
     return res.status(400).json({ success: false, error: 'fund configuration required' });
   }
@@ -94,6 +94,7 @@ router.post('/report/email', async (req, res) => {
 
   try {
     const data = buildProformaData(fund, programName);
+    if (!includeAffordabilitySensitivity) data.topOff = undefined;
     const html = generateProformaHTML(data);
     const pdfBuffer = await htmlToPdfBuffer(html);
     const { id: messageId } = await sendProFormaEmail(
@@ -131,7 +132,7 @@ router.post('/report/pdf', async (req, res) => {
     });
   }
 
-  const { fund, programName } = req.body;
+  const { fund, programName, includeAffordabilitySensitivity } = req.body;
   if (!fund) {
     return res.status(400).json({ success: false, error: 'fund configuration required' });
   }
@@ -140,6 +141,7 @@ router.post('/report/pdf', async (req, res) => {
 
   try {
     const data = buildProformaData(fund, programName);
+    if (!includeAffordabilitySensitivity) data.topOff = undefined;
     const html = generateProformaHTML(data);
     const pdfBuffer = await htmlToPdfBuffer(html);
     const filename = `${data.programName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '-')}-Pro-Forma.pdf`;

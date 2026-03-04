@@ -37,6 +37,7 @@ interface ProgramData {
     medianHomeValue: number
   }
   topOffSchedule?: TopOffYearState[]
+  includeAffordabilitySensitivity?: boolean
   fullResult?: {
     blended: Array<{
       year: number
@@ -102,7 +103,7 @@ export default function Program() {
     )
   }
 
-  const { fund, totalHomeowners, blendedYr10, scenarios, fullResult, topOffSchedule } = data
+  const { fund, totalHomeowners, blendedYr10, scenarios, fullResult, topOffSchedule, includeAffordabilitySensitivity } = data
   const blended = fullResult?.blended || []
   const yr10 = blendedYr10
   const yr30 = blended.length >= 30 ? blended[29] : null
@@ -347,8 +348,8 @@ export default function Program() {
           </Section>
         )}
 
-        {/* Affordability Sensitivity — only when reinvesting and top-off data exists */}
-        {isReinvesting && topOffSchedule && topOffSchedule.length > 0 && (() => {
+        {/* Affordability Sensitivity — only when explicitly enabled */}
+        {includeAffordabilitySensitivity && topOffSchedule && topOffSchedule.length > 0 && (() => {
           const totalTopOff = topOffSchedule[topOffSchedule.length - 1].cumulativeTopOff
           const peakEntry = topOffSchedule.reduce((max, e) => e.annualTopOff > max.annualTopOff ? e : max, topOffSchedule[0])
           const avgAnnual = totalTopOff / topOffSchedule.length
@@ -479,7 +480,7 @@ export default function Program() {
             <Button onClick={() => navigate('/design')}>
               Edit Program
             </Button>
-            <PdfExportButton fund={fund} programName={programName} />
+            <PdfExportButton fund={fund} programName={programName} includeAffordabilitySensitivity={includeAffordabilitySensitivity} />
             <Button variant="outline" onClick={() => navigate('/explore')}>
               Explore Another Market
             </Button>

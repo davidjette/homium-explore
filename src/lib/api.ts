@@ -111,12 +111,12 @@ export async function autoPopulate(state: string, totalRaise: number = 25_000_00
 
 // ── Pro Forma PDF ──
 
-export async function downloadProformaPDF(fund: FundConfig, programName?: string): Promise<void> {
+export async function downloadProformaPDF(fund: FundConfig, programName?: string, includeAffordabilitySensitivity?: boolean): Promise<void> {
   const url = `${API_BASE}/v2/funds/report/pdf`;
   const resp = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fund, programName }),
+    body: JSON.stringify({ fund, programName, includeAffordabilitySensitivity }),
   });
 
   if (!resp.ok) {

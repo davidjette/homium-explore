@@ -233,6 +233,7 @@ export interface WizardState {
   customTotalRaise?: number;   // Free-form dollar amount (mutually exclusive with presets/homeCount)
   managementFeePct: number;    // default 0.005
   reinvestProceeds: boolean;
+  includeAffordabilitySensitivity: boolean;
   fixedHomeCount?: number;     // Fixed development size (e.g. 46) for top-off analysis
   scenarios: ScenarioConfig[];
 }
@@ -256,6 +257,7 @@ export const DEFAULT_WIZARD_STATE: WizardState = {
   payoffConcentration: 0.5,
   totalRaise: 25_000_000,
   managementFeePct: 0.005,
-  reinvestProceeds: false,
+  reinvestProceeds: true,
+  includeAffordabilitySensitivity: false,
   scenarios: [],
 };
