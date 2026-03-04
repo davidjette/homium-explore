@@ -39,6 +39,7 @@ export default function Studio() {
         state: urlState.toUpperCase(),
         stateName: STATE_NAMES[urlState.toUpperCase()] || urlState.toUpperCase(),
         county: params.get('county') || undefined,
+        zip: params.get('zip') || undefined,
         fundName: params.get('name') || '',
       }
     }
