@@ -414,6 +414,7 @@ function StepGeography({ wizard, counties, countyZips, onUpdate, onNext }: {
 
       {counties.length > 0 && (
         <Select
+          key={`county-${counties.length}`}
           label="County (optional)"
           value={wizard.county || ''}
           onChange={e => onUpdate({ county: e.target.value || undefined, zip: undefined })}
@@ -428,6 +429,7 @@ function StepGeography({ wizard, counties, countyZips, onUpdate, onNext }: {
 
       {countyZips.length > 0 && (
         <Select
+          key={`zip-${countyZips.length}`}
           label="ZIP Code (optional)"
           value={wizard.zip || ''}
           onChange={e => onUpdate({ zip: e.target.value || undefined })}
