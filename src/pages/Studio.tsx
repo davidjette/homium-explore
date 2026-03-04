@@ -138,7 +138,7 @@ export default function Studio() {
         },
       })
     }
-  }, [wizard.county])
+  }, [wizard.county, counties])
 
   // Update market data when ZIP changes
   useEffect(() => {
@@ -161,7 +161,7 @@ export default function Studio() {
         })
       }
     }
-  }, [wizard.zip])
+  }, [wizard.zip, stateZips])
 
   // Computed borrower values
   const borrowerIncome = wizard.marketData.medianIncome * wizard.targetAMIPct
