@@ -34,11 +34,16 @@ export default function Studio() {
     const params = new URLSearchParams(window.location.search)
     const urlState = params.get('state')
     if (urlState) {
+      let county = params.get('county') || undefined
+      // API returns "Salt Lake County" — append " County" if user passes just "Salt Lake"
+      if (county && !county.toLowerCase().endsWith(' county')) {
+        county = county + ' County'
+      }
       return {
         ...DEFAULT_WIZARD_STATE,
         state: urlState.toUpperCase(),
         stateName: STATE_NAMES[urlState.toUpperCase()] || urlState.toUpperCase(),
-        county: params.get('county') || undefined,
+        county,
         zip: params.get('zip') || undefined,
         fundName: params.get('name') || '',
       }
