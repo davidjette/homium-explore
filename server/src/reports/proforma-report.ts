@@ -457,11 +457,11 @@ function topOffPage(data: ProformaData): string {
               </div>
             </div>
 
-            <div class="to-chart" style="margin-top:14px">
-              ${svgLineChart(chartData, 360, 240, 'Home Value vs. Income Growth', v => v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}K`)}
+            <div class="to-chart" style="margin-top:14px;flex:1;display:flex;align-items:center;justify-content:center">
+              ${svgLineChart(chartData, 400, 300, 'Home Value vs. Income Growth', v => v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}K`)}
             </div>
 
-            <div class="to-summary" style="margin-top:14px">
+            <div class="to-summary" style="margin-top:auto">
               <h3 class="dr-head">30-Year Summary</h3>
               <div class="to-summary-grid">
                 <div class="to-sum-card">
@@ -676,7 +676,7 @@ export function generateProformaHTML(data: ProformaData): string {
 
     /* ── TOP-OFF SENSITIVITY ── */
     .to-cols{display:flex;gap:36px;flex:1}
-    .to-left{flex:0 0 360px;display:flex;flex-direction:column}
+    .to-left{flex:0 0 400px;display:flex;flex-direction:column}
     .to-right{flex:1;display:flex;flex-direction:column}
     .to-assumptions{margin-bottom:0}
     .to-table td{font-size:12px;padding:7px 8px}
