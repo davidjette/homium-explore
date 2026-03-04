@@ -457,8 +457,8 @@ function topOffPage(data: ProformaData): string {
               </div>
             </div>
 
-            <div class="to-chart" style="margin-top:14px;flex:1;display:flex;align-items:center;justify-content:center">
-              ${svgLineChart(chartData, 400, 300, 'Home Value vs. Income Growth', v => v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}K`)}
+            <div class="to-chart" style="margin-top:14px;flex:1;display:flex;align-items:flex-end">
+              ${svgLineChart(chartData, 400, 340, 'Home Value vs. Income Growth', v => v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}K`)}
             </div>
 
             <div class="to-summary" style="margin-top:auto">
@@ -681,6 +681,7 @@ export function generateProformaHTML(data: ProformaData): string {
     .to-assumptions{margin-bottom:0}
     .to-table td{font-size:12px;padding:7px 8px}
     .to-table th{font-size:9px;padding:7px 8px}
+    .to-chart svg{width:100%;height:auto}
     .to-summary-grid{display:flex;gap:8px;margin-top:6px}
     .to-sum-card{flex:1;background:${GREEN_BG};border:1px solid rgba(61,122,88,.15);border-radius:8px;padding:10px 8px;text-align:center}
     .to-sum-num{font-family:'Taviraj',serif;font-size:22px;font-weight:600;color:${DARK};line-height:1.1}
