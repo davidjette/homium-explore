@@ -70,7 +70,7 @@ export default function Studio() {
   })
 
   // Fetch counties
-  const { data: counties } = useQuery({
+  const { data: counties, isLoading: countiesLoading } = useQuery({
     queryKey: ['counties', wizard.state],
     queryFn: () => fetchCountiesByState(wizard.state),
     enabled: !!wizard.state,
@@ -316,6 +316,7 @@ export default function Studio() {
               <StepGeography
                 wizard={wizard}
                 counties={counties || []}
+                countiesLoading={countiesLoading}
                 countyZips={countyZips}
                 onUpdate={update}
                 onNext={() => setStep(2)}
@@ -377,9 +378,10 @@ export default function Studio() {
 
 // ── Step Components ──
 
-function StepGeography({ wizard, counties, countyZips, onUpdate, onNext }: {
+function StepGeography({ wizard, counties, countiesLoading, countyZips, onUpdate, onNext }: {
   wizard: WizardState
   counties: Array<{ countyName: string; stateAbbr: string; medianIncome: number; medianHomeValue: number; medianRent: number; population: number }>
+  countiesLoading: boolean
   countyZips: Array<{ zipCode: string; city: string; county: string }>
   onUpdate: (p: Partial<WizardState>) => void
   onNext: () => void
@@ -411,6 +413,15 @@ function StepGeography({ wizard, counties, countyZips, onUpdate, onNext }: {
           <option key={abbr} value={abbr}>{name}</option>
         ))}
       </Select>
+
+      {countiesLoading && wizard.state && (
+        <div className="mb-6">
+          <Label className="block mb-2">County (optional)</Label>
+          <div className="font-body text-lightGray text-sm px-5 py-3.5 border-[1.5px] border-border rounded-md">
+            Loading counties...
+          </div>
+        </div>
+      )}
 
       {counties.length > 0 && (
         <Select
