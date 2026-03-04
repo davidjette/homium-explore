@@ -24,6 +24,7 @@ export interface MarketAssumptions {
   interestRate: number;
   propertyTaxRate?: number;
   insuranceRate?: number;
+  wageGrowthPct?: number;
 }
 
 export interface ProgramConfig {
@@ -34,6 +35,7 @@ export interface ProgramConfig {
   loanMax?: number;
   purchaseMax?: number;
   incomeMax?: number;
+  fixedHomeCount?: number;
 }
 
 export interface ScenarioConfig {
@@ -119,11 +121,27 @@ export interface ScenarioResult {
   };
 }
 
+export interface TopOffYearState {
+  year: number;
+  calendarYear: number;
+  homeValue: number;
+  income80AMI: number;
+  maxAffordableMortgage: number;
+  samRequired: number;
+  samBaseline: number;
+  recycledPerHome: number;
+  topOffPerHome: number;
+  exitsThisYear: number;
+  annualTopOff: number;
+  cumulativeTopOff: number;
+}
+
 export interface FundModelResult {
   fund: FundConfig;
   totalHomeowners: number;
   scenarioResults: ScenarioResult[];
   blended: FundYearState[];
+  topOffSchedule?: TopOffYearState[];
 }
 
 export interface HousingStateData {
@@ -164,12 +182,28 @@ export interface AffordabilityData {
   };
 }
 
+export interface HousingZipData {
+  zipCode: string;
+  state: string;
+  county: string;
+  city: string;
+  medianHomeValue: number;
+  medianIncome: number;
+  homeownershipRate: number;
+  population: number;
+  medianRent: number;
+  medianAge: number;
+  vacancyRate: number;
+}
+
 /** Wizard state — accumulated across all 4 steps */
 export interface WizardState {
   // Step 1: Geography
+  fundName: string;
   state: string;
   stateName: string;
   county?: string;
+  zip?: string;
   zipCodes?: string[];
   marketLabel: string;
   marketData: {
@@ -183,6 +217,8 @@ export interface WizardState {
   targetAMIPct: number;       // 0.40 – 1.50, default 0.80
   targetHomePricePct: number;  // % of median, default 1.0
   interestRate: number;        // default 0.07
+  hpaPct: number;              // default 0.05
+  wageGrowthPct: number;       // default 0.03
 
   // Step 3: Program
   homiumSAPct: number;         // 0.10 – 0.50, default 0.20
@@ -191,13 +227,18 @@ export interface WizardState {
   maxHoldYears: number;        // 15, 20, 25, 30
 
   // Step 4: Fund
+  payoffPeakYear: number;      // 5–25, default 12
+  payoffConcentration: number; // 0–1, default 0.5
   totalRaise: number;          // 5M, 10M, 25M, 50M, 100M
+  customTotalRaise?: number;   // Free-form dollar amount (mutually exclusive with presets/homeCount)
   managementFeePct: number;    // default 0.005
   reinvestProceeds: boolean;
+  fixedHomeCount?: number;     // Fixed development size (e.g. 46) for top-off analysis
   scenarios: ScenarioConfig[];
 }
 
 export const DEFAULT_WIZARD_STATE: WizardState = {
+  fundName: '',
   state: '',
   stateName: '',
   marketLabel: '',
@@ -205,10 +246,14 @@ export const DEFAULT_WIZARD_STATE: WizardState = {
   targetAMIPct: 0.80,
   targetHomePricePct: 1.0,
   interestRate: 0.07,
+  hpaPct: 0.05,
+  wageGrowthPct: 0.03,
   homiumSAPct: 0.20,
   downPaymentPct: 0.03,
   programFeePct: 0.05,
   maxHoldYears: 30,
+  payoffPeakYear: 12,
+  payoffConcentration: 0.5,
   totalRaise: 25_000_000,
   managementFeePct: 0.005,
   reinvestProceeds: false,

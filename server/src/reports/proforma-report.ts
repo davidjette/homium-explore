@@ -13,6 +13,7 @@
  */
 
 import { FundConfig, FundModelResult, FundYearState, AffordabilityResult } from '../engine/types';
+import { TopOffYearState } from '../engine/topoff-calculator';
 import { STATE_PATHS, homiumWordmark } from './us-map-paths';
 
 export interface ProformaData {
@@ -22,6 +23,7 @@ export interface ProformaData {
   affordability: AffordabilityResult;
   programName: string;
   geoLabel: string;
+  topOff?: TopOffYearState[];
 }
 
 const STATE_NAMES: Record<string, string> = {
@@ -411,12 +413,110 @@ function chartsPage(data: ProformaData): string {
     </div>`;
 }
 
-// ── Page 5: Disclaimer ──
+// ── Page 5 (conditional): Top-Off Sensitivity ──
+
+function topOffPage(data: ProformaData): string {
+  const { fund, topOff } = data;
+  if (!topOff || !topOff.length) return '';
+
+  const fundName = fund.name || data.programName;
+  const hpa = fund.assumptions.hpaPct;
+  const wg = fund.assumptions.wageGrowthPct || 0;
+  const fixedHomes = fund.program.fixedHomeCount || 0;
+  const milestones = [0, 1, 3, 5, 8, 13, 18, 23, 29].filter(i => i < topOff.length);
+
+  const totalTopOff = topOff[topOff.length - 1].cumulativeTopOff;
+  const avgAnnual = totalTopOff / 30;
+  const peakYear = topOff.reduce((max, y) => y.annualTopOff > max.annualTopOff ? y : max, topOff[0]);
+
+  // Dual-line chart: home value vs income indexed to 100
+  const chartData = topOff.filter((_, i) => i % 2 === 0 || i === topOff.length - 1).map(y => ({
+    x: y.calendarYear,
+    lines: [
+      { y: y.homeValue, color: DARK, label: 'Home Value' },
+      { y: y.income80AMI, color: GREEN, label: '80% AMI Income' },
+    ],
+  }));
+
+  return `
+    <div class="page topoff">
+      <div class="page-inner">
+        <div class="sbar"><div class="sbar-l"><span class="sbar-tag">Affordability Sensitivity</span><span class="sbar-name">${fundName}</span></div><div class="sbar-r">${homiumWordmark(LIGHT_GRAY, 18)}</div></div>
+
+        <div class="to-cols">
+          <div class="to-left">
+            <div class="to-assumptions">
+              <h3 class="dr-head">Key Assumptions</h3>
+              <div class="dr-params-grid">
+                <div class="dr-p"><span>HPA Rate</span><strong>${fmtP(hpa, 1)}</strong></div>
+                <div class="dr-p"><span>Wage Growth</span><strong>${fmtP(wg, 1)}</strong></div>
+                <div class="dr-p"><span>Target AMI</span><strong>80%</strong></div>
+                <div class="dr-p"><span>Fixed Homes</span><strong>${fmtN(fixedHomes)}</strong></div>
+                <div class="dr-p"><span>HPA − WG Spread</span><strong>${fmtP(hpa - wg, 1)}</strong></div>
+                <div class="dr-p"><span>SAM %</span><strong>${fmtP(fund.program.homiumSAPct, 0)}</strong></div>
+              </div>
+            </div>
+
+            <div class="to-chart" style="margin-top:14px">
+              ${svgLineChart(chartData, 440, 250, 'Home Value vs. Income Growth', v => v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}K`)}
+            </div>
+
+            <div class="to-summary" style="margin-top:14px">
+              <h3 class="dr-head">30-Year Summary</h3>
+              <div class="to-summary-grid">
+                <div class="to-sum-card">
+                  <div class="to-sum-num">${fmtM(totalTopOff)}</div>
+                  <div class="to-sum-lbl">Total Top-Off</div>
+                </div>
+                <div class="to-sum-card">
+                  <div class="to-sum-num">${fmtM(avgAnnual)}</div>
+                  <div class="to-sum-lbl">Avg Annual</div>
+                </div>
+                <div class="to-sum-card">
+                  <div class="to-sum-num">${peakYear.calendarYear}</div>
+                  <div class="to-sum-lbl">Peak Year (${fmtM(peakYear.annualTopOff)})</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="to-right">
+            <h3 class="dr-head">Top-Off Schedule</h3>
+            <table class="proj-table proj-table-full to-table">
+              <thead><tr><th>Year</th><th>Home Value</th><th>80% AMI</th><th>SAM Req'd</th><th>Recycled</th><th>Period Top-Off</th><th>Cumulative</th></tr></thead>
+              <tbody>
+                ${milestones.map((idx, mi) => {
+                  const y = topOff[idx];
+                  const prevCum = mi > 0 ? topOff[milestones[mi - 1]].cumulativeTopOff : 0;
+                  const periodTopOff = y.cumulativeTopOff - prevCum;
+                  const hl = periodTopOff > 0;
+                  return `<tr class="${hl ? 'hl-row' : ''}">
+                    <td>${y.calendarYear}</td>
+                    <td>${fmtM(y.homeValue)}</td>
+                    <td>${fmtM(y.income80AMI)}</td>
+                    <td>${fmtM(y.samRequired)}</td>
+                    <td>${fmtM(y.recycledPerHome)}</td>
+                    <td>${periodTopOff > 0 ? fmtM(periodTopOff) : '—'}</td>
+                    <td>${fmtM(y.cumulativeTopOff)}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="page-num">5</div>
+      </div>
+    </div>`;
+}
+
+// ── Page 5/6: Disclaimer ──
 
 function disclaimerPage(data: ProformaData): string {
   const fundName = data.fund.name || data.programName;
   const stateCode = data.fund.geography?.state;
   const stateName = stateCode ? STATE_NAMES[stateCode] || data.geoLabel : data.geoLabel;
+  const pageNum = data.topOff ? 6 : 5;
   return `
     <div class="page disclaimer">
       <div class="page-inner">
@@ -437,7 +537,7 @@ function disclaimerPage(data: ProformaData): string {
             <p style="margin-top:12px;font-size:11px;color:#999">&copy; ${new Date().getFullYear()} Homium, Inc. All rights reserved.</p>
           </div>
         </div>
-        <div class="page-footer"><div class="pf-line"></div><div class="pf-row"><span>${fundName} &mdash; Pro Forma</span><span>Prepared by Homium, Inc. &middot; ${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span><span>5</span></div></div>
+        <div class="page-footer"><div class="pf-line"></div><div class="pf-row"><span>${fundName} &mdash; Pro Forma</span><span>Prepared by Homium, Inc. &middot; ${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span><span>${pageNum}</span></div></div>
       </div>
     </div>`;
 }
@@ -574,6 +674,18 @@ export function generateProformaHTML(data: ProformaData): string {
     .chart-card svg{display:block;max-width:100%;height:auto}
     .charts-foot{font-size:11px;color:${LIGHT_GRAY};text-align:center;padding-top:4px;font-style:italic}
 
+    /* ── TOP-OFF SENSITIVITY ── */
+    .to-cols{display:flex;gap:32px;flex:1}
+    .to-left{flex:0 0 440px;display:flex;flex-direction:column}
+    .to-right{flex:1;display:flex;flex-direction:column}
+    .to-assumptions{margin-bottom:0}
+    .to-table td{font-size:12px;padding:7px 8px}
+    .to-table th{font-size:9px;padding:7px 8px}
+    .to-summary-grid{display:flex;gap:12px;margin-top:6px}
+    .to-sum-card{flex:1;background:${GREEN_BG};border:1px solid rgba(61,122,88,.15);border-radius:10px;padding:12px 14px;text-align:center}
+    .to-sum-num{font-family:'Taviraj',serif;font-size:24px;font-weight:600;color:${DARK};line-height:1.1}
+    .to-sum-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${GRAY};margin-top:4px}
+
     /* ── DISCLAIMER ── */
     .disclaimer{background:#fff}
     .disc-top{margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid ${GREEN}}
@@ -592,6 +704,7 @@ export function generateProformaHTML(data: ProformaData): string {
   ${opportunityPage(data)}
   ${impactPage(data)}
   ${chartsPage(data)}
+  ${data.topOff ? topOffPage(data) : ''}
   ${disclaimerPage(data)}
 </body>
 </html>`;

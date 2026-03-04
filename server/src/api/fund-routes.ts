@@ -7,6 +7,7 @@ import { Router, Request, Response } from 'express';
 import { FundConfig, DEFAULT_PAYOFF_SCHEDULE } from '../engine/types';
 import { runFundModel, buildFundConfig, validateFund } from '../engine/fund-model';
 import { calculateShareConversion } from '../engine/share-conversion';
+import { calculateTopOffSchedule } from '../engine/topoff-calculator';
 import {
   autoPopulateScenarios, getStateStats, getZipStats, searchHousingData,
   getCountiesByState, getCountyStats, getZipsByState, getAllStates,
@@ -92,6 +93,12 @@ router.post('/run', (req: Request, res: Response) => {
     const start = Date.now();
     const result = runFundModel(fund);
 
+    // Calculate top-off schedule when fixedHomeCount and wageGrowthPct are present
+    let topOffSchedule;
+    if (fund.assumptions.wageGrowthPct != null && fund.program.fixedHomeCount) {
+      topOffSchedule = calculateTopOffSchedule(fund, fund.assumptions.wageGrowthPct, fund.program.fixedHomeCount);
+    }
+
     res.json(ok({
       fund: result.fund,
       totalHomeowners: result.totalHomeowners,
@@ -107,6 +114,7 @@ router.post('/run', (req: Request, res: Response) => {
         },
       })),
       blended: result.blended,
+      topOffSchedule,
     }, { compute_time_ms: Date.now() - start }));
   } catch (e: any) {
     res.status(500).json(err(e.message));

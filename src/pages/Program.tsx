@@ -15,6 +15,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 
+import type { TopOffYearState } from '../lib/types'
+
 interface ProgramData {
   fund: any
   totalHomeowners: number
@@ -34,6 +36,7 @@ interface ProgramData {
     medianIncome: number
     medianHomeValue: number
   }
+  topOffSchedule?: TopOffYearState[]
   fullResult?: {
     blended: Array<{
       year: number
@@ -99,7 +102,7 @@ export default function Program() {
     )
   }
 
-  const { fund, totalHomeowners, blendedYr10, scenarios, fullResult } = data
+  const { fund, totalHomeowners, blendedYr10, scenarios, fullResult, topOffSchedule } = data
   const blended = fullResult?.blended || []
   const yr10 = blendedYr10
   const yr30 = blended.length >= 30 ? blended[29] : null
@@ -122,6 +125,8 @@ export default function Program() {
   const totalRaise = fund?.raise?.totalRaise || 25_000_000
   const programName = fund?.name || `${stateName} Homeownership Program`
   const geoLabel = fund?.geography?.label || stateName
+  const isReinvesting = fund?.raise?.reinvestNetProceeds === true
+  const returnsLabel = isReinvesting ? 'Capital Recycled' : 'Cumulative Returns'
 
   // Borrower profile from MID scenario
   const midScenario = scenarios.find(s => s.name === 'MID') || scenarios[0]
@@ -280,7 +285,7 @@ export default function Program() {
                     <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={v => `$${(v / 1e6).toFixed(0)}M`} />
                     <Tooltip formatter={(v) => fmtDollar(Number(v))} labelFormatter={l => `Year ${l}`} />
                     <Line type="monotone" dataKey="fundValue" stroke={CHART_COLORS.dark} strokeWidth={2} dot={false} name="Fund Value" />
-                    <Line type="monotone" dataKey="cumulativeReturns" stroke={CHART_COLORS.green} strokeWidth={2} dot={false} name="Cumulative Returns" />
+                    <Line type="monotone" dataKey="cumulativeReturns" stroke={CHART_COLORS.green} strokeWidth={2} dot={false} name={returnsLabel} />
                   </LineChart>
                 </ResponsiveContainer>
               </Card>
@@ -341,6 +346,83 @@ export default function Program() {
             </div>
           </Section>
         )}
+
+        {/* Affordability Sensitivity — only when top-off data exists */}
+        {topOffSchedule && topOffSchedule.length > 0 && (() => {
+          const totalTopOff = topOffSchedule[topOffSchedule.length - 1].cumulativeTopOff
+          const peakEntry = topOffSchedule.reduce((max, e) => e.annualTopOff > max.annualTopOff ? e : max, topOffSchedule[0])
+          const avgAnnual = totalTopOff / topOffSchedule.length
+
+          const divergenceData = topOffSchedule.map(e => ({
+            year: e.calendarYear,
+            homeValue: Math.round(e.homeValue),
+            income80AMI: Math.round(e.income80AMI),
+          }))
+
+          const topOffChartData = topOffSchedule.map(e => ({
+            year: e.calendarYear,
+            cumulative: Math.round(e.cumulativeTopOff),
+            annual: Math.round(e.annualTopOff),
+          }))
+
+          return (
+            <Section alt>
+              <H2 className="mb-8 text-center">Affordability Sensitivity</H2>
+              <Body className="text-center mb-8 max-w-2xl mx-auto">
+                When home values outpace income growth, the program needs additional capital (top-off) to maintain affordability for new cohorts.
+              </Body>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-10 max-w-3xl mx-auto">
+                <MetricCard
+                  label="Total Top-Off"
+                  value={fmtDollar(totalTopOff)}
+                  description="Cumulative additional capital needed over 30 years"
+                />
+                <MetricCard
+                  label="Peak Year"
+                  value={String(peakEntry.calendarYear)}
+                  description={`Highest annual top-off: ${fmtDollar(peakEntry.annualTopOff)}`}
+                />
+                <MetricCard
+                  label="Avg Annual"
+                  value={fmtDollar(avgAnnual)}
+                  description="Average annual top-off capital needed"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 max-w-5xl mx-auto">
+                {/* Home Value vs Income Divergence */}
+                <Card>
+                  <Label className="block mb-4">Home Value vs Income (80% AMI)</Label>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <LineChart data={divergenceData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
+                      <XAxis dataKey="year" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} />
+                      <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={v => `$${(v / 1000).toFixed(0)}K`} />
+                      <Tooltip formatter={(v) => fmtDollar(Number(v))} labelFormatter={l => `Year ${l}`} />
+                      <Line type="monotone" dataKey="homeValue" stroke={CHART_COLORS.dark} strokeWidth={2} dot={false} name="Home Value" />
+                      <Line type="monotone" dataKey="income80AMI" stroke={CHART_COLORS.green} strokeWidth={2} dot={false} name="80% AMI Income" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Card>
+
+                {/* Cumulative Top-Off */}
+                <Card>
+                  <Label className="block mb-4">Cumulative Top-Off Capital</Label>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <AreaChart data={topOffChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
+                      <XAxis dataKey="year" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} />
+                      <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={v => `$${(v / 1e6).toFixed(1)}M`} />
+                      <Tooltip formatter={(v) => fmtDollar(Number(v))} labelFormatter={l => `Year ${l}`} />
+                      <Area type="monotone" dataKey="cumulative" stroke={CHART_COLORS.green} fill={CHART_COLORS.green} fillOpacity={0.15} strokeWidth={2} name="Cumulative Top-Off" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </Card>
+              </div>
+            </Section>
+          )
+        })()}
 
         {/* Program Summary */}
         <Section>

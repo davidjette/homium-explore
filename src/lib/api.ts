@@ -3,12 +3,13 @@
 import type {
   HousingStateData,
   HousingCountyData,
+  HousingZipData,
   AffordabilityData,
   FundConfig,
   FundModelResult,
 } from './types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://udf-fund-model.onrender.com/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -46,6 +47,10 @@ export async function fetchStateData(stateAbbr: string): Promise<HousingStateDat
 
 export async function fetchCountiesByState(stateAbbr: string): Promise<HousingCountyData[]> {
   return apiFetch(`/v2/funds/housing/state/${stateAbbr.toUpperCase()}/counties`);
+}
+
+export async function fetchZipsByState(stateAbbr: string): Promise<HousingZipData[]> {
+  return apiFetch(`/v2/funds/housing/state/${stateAbbr.toUpperCase()}/zips`);
 }
 
 export async function fetchCountyData(stateAbbr: string, county: string): Promise<HousingCountyData> {

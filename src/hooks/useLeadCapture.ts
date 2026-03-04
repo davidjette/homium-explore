@@ -14,7 +14,8 @@ export function useLeadCapture() {
     }
   })
 
-  const isGated = !leadInfo
+  const hasWizardResult = !!sessionStorage.getItem('programResult')
+  const isGated = !leadInfo && !hasWizardResult
 
   // Track when gate is shown
   useEffect(() => {

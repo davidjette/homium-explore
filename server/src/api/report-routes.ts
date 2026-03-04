@@ -9,6 +9,7 @@
 import { Router } from 'express';
 import { buildFundConfig, runFundModel } from '../engine/fund-model';
 import { calculateAffordability } from '../engine/affordability';
+import { calculateTopOffSchedule } from '../engine/topoff-calculator';
 import { toLegacyAssumptions, FundConfig } from '../engine/types';
 import { generateProformaHTML, ProformaData } from '../reports/proforma-report';
 import { htmlToPdfBuffer } from '../reports/pdf-generator';
@@ -52,6 +53,11 @@ function buildProformaData(fundInput: any, programName?: string): ProformaData {
     || fund.geography?.label
     || 'Target Geography';
 
+  // Top-off calculation if wage growth is specified
+  const topOff = fund.assumptions.wageGrowthPct != null
+    ? calculateTopOffSchedule(fund, fund.assumptions.wageGrowthPct, fund.program.fixedHomeCount || 0)
+    : undefined;
+
   return {
     fund,
     result,
@@ -59,6 +65,7 @@ function buildProformaData(fundInput: any, programName?: string): ProformaData {
     affordability,
     programName: programName || fund.name,
     geoLabel,
+    topOff,
   };
 }
 
@@ -153,16 +160,16 @@ router.post('/report/pdf', async (req, res) => {
 router.get('/report/preview', (req, res) => {
   try {
     const data = buildProformaData({
-      name: 'Utah Dream Fund',
-      geography: { state: 'UT', label: 'Utah' },
-      raise: { totalRaise: 10_000_000, annualContributionPct: 0, reinvestNetProceeds: false, baseYear: 2026 },
+      name: 'SLC 46-Home Program',
+      geography: { state: 'UT', label: 'Salt Lake City' },
+      raise: { totalRaise: 5_500_000, annualContributionPct: 0, reinvestNetProceeds: true, baseYear: 2026 },
       fees: { programFeePct: 0.05, managementFeePct: 0.005 },
-      assumptions: { hpaPct: 0.05, interestRate: 0.07 },
-      program: { homiumSAPct: 0.25, downPaymentPct: 0.03, maxFrontRatio: 0.30, maxHoldYears: 30 },
+      assumptions: { hpaPct: 0.05, interestRate: 0.07, wageGrowthPct: 0.03 },
+      program: { homiumSAPct: 0.25, downPaymentPct: 0.03, maxFrontRatio: 0.30, maxHoldYears: 30, fixedHomeCount: 46 },
       scenarios: [
-        { name: 'LO', weight: 0.20, raiseAllocation: 2_000_000, medianIncome: 76_000, medianHomeValue: 350_000 },
-        { name: 'MID', weight: 0.60, raiseAllocation: 6_000_000, medianIncome: 98_000, medianHomeValue: 440_000 },
-        { name: 'HI', weight: 0.20, raiseAllocation: 2_000_000, medianIncome: 132_000, medianHomeValue: 600_000 },
+        { name: 'LO', weight: 0.20, raiseAllocation: 1_100_000, medianIncome: 76_000, medianHomeValue: 350_000 },
+        { name: 'MID', weight: 0.60, raiseAllocation: 3_300_000, medianIncome: 98_000, medianHomeValue: 440_000 },
+        { name: 'HI', weight: 0.20, raiseAllocation: 1_100_000, medianIncome: 132_000, medianHomeValue: 600_000 },
       ],
     });
     const html = generateProformaHTML(data);

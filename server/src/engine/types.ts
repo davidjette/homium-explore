@@ -45,6 +45,7 @@ export interface MarketAssumptions {
   interestRate: number;           // Mortgage interest rate (e.g. 0.07)
   propertyTaxRate?: number;       // Override for property tax (default varies by state)
   insuranceRate?: number;         // Override for insurance rate
+  wageGrowthPct?: number;         // Annual wage growth for target AMI cohort (e.g. 0.03)
 }
 
 export interface ProgramConfig {
@@ -55,6 +56,7 @@ export interface ProgramConfig {
   loanMax?: number;               // Program limit: max loan amount
   purchaseMax?: number;           // Program limit: max purchase price
   incomeMax?: number;             // Program limit: max qualifying income
+  fixedHomeCount?: number;        // Fixed development size (e.g. 46 SFHs) for top-off analysis
 }
 
 export interface ScenarioConfig {
