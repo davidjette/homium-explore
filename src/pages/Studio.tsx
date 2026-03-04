@@ -93,21 +93,27 @@ export default function Studio() {
   // Update market data + smart defaults when state data arrives
   useEffect(() => {
     if (stateData) {
-      const { targetAMIPct, homiumSAPct } = computeSmartDefaults(
-        stateData.avgIncome, stateData.avgHomePrice
-      )
-      update({
-        stateName: stateData.stateName || STATE_NAMES[wizard.state] || wizard.state,
-        marketLabel: stateData.stateName || STATE_NAMES[wizard.state] || wizard.state,
-        marketData: {
-          medianIncome: stateData.avgIncome,
-          medianHomeValue: stateData.avgHomePrice,
-          medianRent: stateData.avgRent,
-          population: stateData.totalPopulation,
-        },
-        targetAMIPct,
-        homiumSAPct,
-      })
+      // Always set stateName; only set market data if no county/zip is pre-selected
+      // (the county and zip effects handle their own market data)
+      if (wizard.county || wizard.zip) {
+        update({ stateName: stateData.stateName || STATE_NAMES[wizard.state] || wizard.state })
+      } else {
+        const { targetAMIPct, homiumSAPct } = computeSmartDefaults(
+          stateData.avgIncome, stateData.avgHomePrice
+        )
+        update({
+          stateName: stateData.stateName || STATE_NAMES[wizard.state] || wizard.state,
+          marketLabel: stateData.stateName || STATE_NAMES[wizard.state] || wizard.state,
+          marketData: {
+            medianIncome: stateData.avgIncome,
+            medianHomeValue: stateData.avgHomePrice,
+            medianRent: stateData.avgRent,
+            population: stateData.totalPopulation,
+          },
+          targetAMIPct,
+          homiumSAPct,
+        })
+      }
     }
   }, [stateData])
 
