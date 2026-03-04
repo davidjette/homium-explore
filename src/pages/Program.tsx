@@ -347,8 +347,8 @@ export default function Program() {
           </Section>
         )}
 
-        {/* Affordability Sensitivity — only when top-off data exists */}
-        {topOffSchedule && topOffSchedule.length > 0 && (() => {
+        {/* Affordability Sensitivity — only when reinvesting and top-off data exists */}
+        {isReinvesting && topOffSchedule && topOffSchedule.length > 0 && (() => {
           const totalTopOff = topOffSchedule[topOffSchedule.length - 1].cumulativeTopOff
           const peakEntry = topOffSchedule.reduce((max, e) => e.annualTopOff > max.annualTopOff ? e : max, topOffSchedule[0])
           const avgAnnual = totalTopOff / topOffSchedule.length
