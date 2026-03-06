@@ -188,12 +188,15 @@ function svgLineChart(data: Array<{ x: number; lines: { y: number; color: string
 // ── Page 1: Cover ──
 
 function coverPage(data: ProformaData): string {
-  const { fund, geoLabel } = data;
+  const { fund, geoLabel, result } = data;
   const totalRaise = fund.raise.totalRaise;
   const date = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const fundName = fund.name || data.programName;
   const stateCode = fund.geography?.state;
-  const stateName = stateCode ? STATE_NAMES[stateCode] || stateCode : geoLabel;
+  const isMultiGeo = result.geoBreakdown && result.geoBreakdown.length > 1;
+  const stateName = isMultiGeo
+    ? `${result.geoBreakdown!.length} Markets (${stateCode ? STATE_NAMES[stateCode] || stateCode : geoLabel})`
+    : (stateCode ? STATE_NAMES[stateCode] || stateCode : geoLabel);
 
   return `
     <div class="page cover">
@@ -233,7 +236,10 @@ function opportunityPage(data: ProformaData): string {
   const monthlySavings = affordability.pitiBeforeHomium - affordability.pitiAfterHomium;
   const fundName = fund.name || data.programName;
   const stateCode = fund.geography?.state;
-  const stateName = stateCode ? STATE_NAMES[stateCode] || geoLabel : geoLabel;
+  const isMultiGeo = result.geoBreakdown && result.geoBreakdown.length > 1;
+  const stateName = isMultiGeo
+    ? (stateCode ? STATE_NAMES[stateCode] || geoLabel : geoLabel)
+    : (stateCode ? STATE_NAMES[stateCode] || geoLabel : geoLabel);
 
   return `
     <div class="page opp">
@@ -352,11 +358,23 @@ function impactPage(data: ProformaData): string {
               <div class="dr-p"><span>Reinvest</span><strong>${fund.raise.reinvestNetProceeds ? 'Yes' : 'No'}</strong></div>
             </div>
 
-            ${scenarios.length > 1 ? `
-            <h3 class="dr-head" style="margin-top:16px">Scenarios</h3>
-            <table class="sc-table"><thead><tr><th>Name</th><th>HOs</th><th>Income</th><th>Home</th></tr></thead><tbody>
-            ${scenarios.map(sr => `<tr><td class="bold">${sr.scenario.name}</td><td>${fmtN(sr.cohorts.reduce((s: number, c: any) => s + c.homeownerCount, 0))}</td><td>${fmt(sr.scenario.medianIncome, 0)}</td><td>${fmt(sr.scenario.medianHomeValue, 0)}</td></tr>`).join('')}
-            </tbody></table>` : ''}
+            ${scenarios.length > 1 ? (() => {
+              const geoBreakdown = result.geoBreakdown;
+              if (geoBreakdown && geoBreakdown.length > 1) {
+                // Multi-geo: group scenarios by geography
+                return geoBreakdown.map(gb => `
+                  <h3 class="dr-head" style="margin-top:12px">${gb.geo.geoLabel} (${fmtP(gb.geo.allocationPct, 0)})</h3>
+                  <table class="sc-table"><thead><tr><th>Name</th><th>HOs</th><th>Income</th><th>Home</th></tr></thead><tbody>
+                  ${gb.scenarioResults.map(sr => `<tr><td class="bold">${sr.scenario.name}</td><td>${fmtN(sr.cohorts.reduce((s: number, c: any) => s + c.homeownerCount, 0))}</td><td>${fmt(sr.scenario.medianIncome, 0)}</td><td>${fmt(sr.scenario.medianHomeValue, 0)}</td></tr>`).join('')}
+                  </tbody></table>
+                `).join('');
+              }
+              return `
+                <h3 class="dr-head" style="margin-top:16px">Scenarios</h3>
+                <table class="sc-table"><thead><tr><th>Name</th><th>HOs</th><th>Income</th><th>Home</th></tr></thead><tbody>
+                ${scenarios.map(sr => `<tr><td class="bold">${sr.scenario.name}</td><td>${fmtN(sr.cohorts.reduce((s: number, c: any) => s + c.homeownerCount, 0))}</td><td>${fmt(sr.scenario.medianIncome, 0)}</td><td>${fmt(sr.scenario.medianHomeValue, 0)}</td></tr>`).join('')}
+                </tbody></table>`;
+            })() : ''}
           </div>
 
           <div class="dr-right">
@@ -413,7 +431,89 @@ function chartsPage(data: ProformaData): string {
     </div>`;
 }
 
-// ── Page 5 (conditional): Top-Off Sensitivity ──
+// ── Page 5 (conditional): Geographic Distribution — multi-geo only ──
+
+function geoDistributionPage(data: ProformaData): string {
+  const { fund, result } = data;
+  const geoBreakdown = result.geoBreakdown;
+  if (!geoBreakdown || geoBreakdown.length < 2) return '';
+
+  const fundName = fund.name || data.programName;
+  const totalHO = geoBreakdown.reduce((s, gb) => s + gb.totalHomeowners, 0);
+
+  // Build horizontal stacked bar
+  const colors = [GREEN, DARK, GREEN_LIGHT, '#5BA37E', '#2E6046', '#4A9268'];
+  const barSegments = geoBreakdown.map((gb, i) => {
+    const pct = gb.geo.allocationPct * 100;
+    return `<div style="width:${pct}%;background:${colors[i % colors.length]};display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;font-family:Ubuntu,sans-serif">${Math.round(pct)}%</div>`;
+  }).join('');
+
+  // Build table rows
+  const tableRows = geoBreakdown.map((gb, i) => {
+    const yr10eq = gb.blended[9]?.totalEquityCreated || 0;
+    const yr10ho = gb.blended[9]?.activeHomeowners || 0;
+    return `<tr>
+      <td style="padding:10px 14px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${colors[i % colors.length]};margin-right:8px;vertical-align:middle"></span>${gb.geo.geoLabel}</td>
+      <td style="padding:10px 14px;text-align:right">${fmtP(gb.geo.allocationPct, 0)}</td>
+      <td style="padding:10px 14px;text-align:right">${fmt(gb.geo.medianIncome)}</td>
+      <td style="padding:10px 14px;text-align:right">${fmt(gb.geo.medianHomeValue)}</td>
+      <td style="padding:10px 14px;text-align:right">${fmtN(gb.totalHomeowners)}</td>
+      <td style="padding:10px 14px;text-align:right">${fmtM(yr10eq)}</td>
+    </tr>`;
+  }).join('');
+
+  // Build scenario detail per geo
+  const scenarioBlocks = geoBreakdown.map((gb, i) => {
+    const rows = gb.scenarioResults.map(sr => {
+      const ho = sr.cohorts.reduce((s: number, c: any) => s + c.homeownerCount, 0);
+      return `<tr>
+        <td style="padding:4px 10px;font-weight:600">${sr.scenario.name}</td>
+        <td style="padding:4px 10px;text-align:right">${fmtN(ho)}</td>
+        <td style="padding:4px 10px;text-align:right">${fmt(sr.scenario.medianIncome)}</td>
+        <td style="padding:4px 10px;text-align:right">${fmt(sr.scenario.medianHomeValue)}</td>
+      </tr>`;
+    }).join('');
+    return `<div style="flex:1;min-width:0">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:${colors[i % colors.length]};margin-bottom:6px">${gb.geo.geoLabel}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="border-bottom:1px solid ${BORDER}"><th style="text-align:left;padding:4px 10px;font-size:10px;color:${GRAY}">Scenario</th><th style="text-align:right;padding:4px 10px;font-size:10px;color:${GRAY}">HOs</th><th style="text-align:right;padding:4px 10px;font-size:10px;color:${GRAY}">Income</th><th style="text-align:right;padding:4px 10px;font-size:10px;color:${GRAY}">Home</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="page" style="background:#fff">
+      <div class="page-inner">
+        <div class="sbar"><div class="sbar-l"><span class="sbar-tag">Geographic Distribution</span><span class="sbar-name">${fundName}</span></div><div class="sbar-r">${homiumWordmark(LIGHT_GRAY, 18)}</div></div>
+
+        <div style="margin-bottom:20px">
+          <div style="display:flex;height:36px;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">${barSegments}</div>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;font-family:Ubuntu,sans-serif;font-size:13px;margin-bottom:24px">
+          <thead><tr style="background:${DARK}">
+            <th style="padding:10px 14px;text-align:left;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-radius:8px 0 0 0">Geography</th>
+            <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Allocation</th>
+            <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Median Income</th>
+            <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Median Home Value</th>
+            <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Homeowners</th>
+            <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-radius:0 8px 0 0">Equity (Yr 10)</th>
+          </tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+
+        <h3 class="dr-head">Scenario Detail by Geography</h3>
+        <div style="display:flex;gap:24px;margin-top:10px;flex:1">
+          ${scenarioBlocks}
+        </div>
+
+        <div class="page-num">5</div>
+      </div>
+    </div>`;
+}
+
+// ── Top-Off Sensitivity ──
 
 function topOffPage(data: ProformaData): string {
   const { fund, topOff } = data;
@@ -457,11 +557,11 @@ function topOffPage(data: ProformaData): string {
               </div>
             </div>
 
-            <div class="to-chart" style="margin-top:14px;flex:1;display:flex;align-items:flex-end">
-              ${svgLineChart(chartData, 400, 340, 'Home Value vs. Income Growth', v => v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}K`)}
+            <div class="to-chart" style="margin-top:10px;flex:1;display:flex;align-items:center">
+              ${svgLineChart(chartData, 480, 380, 'Home Value vs. Income Growth', v => v >= 1e6 ? `$${(v / 1e6).toFixed(1)}M` : `$${(v / 1e3).toFixed(0)}K`)}
             </div>
 
-            <div class="to-summary" style="margin-top:auto">
+            <div class="to-summary" style="margin-top:10px">
               <h3 class="dr-head">30-Year Summary</h3>
               <div class="to-summary-grid">
                 <div class="to-sum-card">
@@ -516,7 +616,8 @@ function disclaimerPage(data: ProformaData): string {
   const fundName = data.fund.name || data.programName;
   const stateCode = data.fund.geography?.state;
   const stateName = stateCode ? STATE_NAMES[stateCode] || data.geoLabel : data.geoLabel;
-  const pageNum = data.topOff ? 6 : 5;
+  const hasGeo = data.result.geoBreakdown && data.result.geoBreakdown.length > 1;
+  const pageNum = 4 + (hasGeo ? 1 : 0) + (data.topOff ? 1 : 0) + 1;
   return `
     <div class="page disclaimer">
       <div class="page-inner">
@@ -705,6 +806,7 @@ export function generateProformaHTML(data: ProformaData): string {
   ${opportunityPage(data)}
   ${impactPage(data)}
   ${chartsPage(data)}
+  ${geoDistributionPage(data)}
   ${data.topOff ? topOffPage(data) : ''}
   ${disclaimerPage(data)}
 </body>

@@ -115,6 +115,17 @@ router.post('/run', (req: Request, res: Response) => {
       })),
       blended: result.blended,
       topOffSchedule,
+      geoBreakdown: result.geoBreakdown?.map(gb => ({
+        geo: gb.geo,
+        scenarioResults: gb.scenarioResults.map(sr => ({
+          scenario: sr.scenario,
+          cohorts: sr.cohorts,
+          affordability: sr.affordability,
+          years: sr.fundResults,
+        })),
+        blended: gb.blended,
+        totalHomeowners: gb.totalHomeowners,
+      })),
     }, { compute_time_ms: Date.now() - start }));
   } catch (e: any) {
     res.status(500).json(err(e.message));

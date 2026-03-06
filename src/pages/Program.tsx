@@ -9,13 +9,14 @@ import { STATE_NAMES } from '../design-system/Map'
 import { useLeadCapture } from '../hooks/useLeadCapture'
 import LeadCaptureModal from '../components/shared/LeadCaptureModal'
 import PdfExportButton from '../components/shared/PdfExportButton'
+import ExcelExportButton from '../components/shared/ExcelExportButton'
 import { trackEvent } from '../lib/analytics'
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 
-import type { TopOffYearState } from '../lib/types'
+import type { TopOffYearState, GeoBreakdownResult } from '../lib/types'
 
 interface ProgramData {
   fund: any
@@ -38,6 +39,7 @@ interface ProgramData {
   }
   topOffSchedule?: TopOffYearState[]
   includeAffordabilitySensitivity?: boolean
+  geoBreakdown?: GeoBreakdownResult[]
   fullResult?: {
     blended: Array<{
       year: number
@@ -103,7 +105,7 @@ export default function Program() {
     )
   }
 
-  const { fund, totalHomeowners, blendedYr10, scenarios, fullResult, topOffSchedule, includeAffordabilitySensitivity } = data
+  const { fund, totalHomeowners, blendedYr10, scenarios, fullResult, topOffSchedule, includeAffordabilitySensitivity, geoBreakdown } = data
   const blended = fullResult?.blended || []
   const yr10 = blendedYr10
   const yr30 = blended.length >= 30 ? blended[29] : null
@@ -125,7 +127,10 @@ export default function Program() {
 
   const totalRaise = fund?.raise?.totalRaise || 25_000_000
   const programName = fund?.name || `${stateName} Homeownership Program`
-  const geoLabel = fund?.geography?.label || stateName
+  const isMultiGeo = geoBreakdown && geoBreakdown.length > 1
+  const geoLabel = isMultiGeo
+    ? `${geoBreakdown.length} Geographies (${stateName})`
+    : (fund?.geography?.label || stateName)
   const isReinvesting = fund?.raise?.reinvestNetProceeds === true
   const returnsLabel = isReinvesting ? 'Capital Recycled' : 'Cumulative Returns'
 
@@ -168,10 +173,21 @@ export default function Program() {
           <Label className="text-green mb-3 block">Program Model</Label>
           <H1>{programName}</H1>
           <div className="flex flex-wrap items-center gap-4 mt-4">
-            <span className="inline-flex items-center gap-1.5 bg-greenLight text-green px-3 py-1 rounded-full font-body text-sm font-medium">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
-              {geoLabel}
-            </span>
+            {isMultiGeo ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {geoBreakdown!.map(gb => (
+                  <span key={gb.geo.geoId} className="inline-flex items-center gap-1.5 bg-greenLight text-green px-3 py-1 rounded-full font-body text-sm font-medium">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
+                    {gb.geo.geoLabel}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 bg-greenLight text-green px-3 py-1 rounded-full font-body text-sm font-medium">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
+                {geoLabel}
+              </span>
+            )}
             <span className="font-body text-sm text-lightGray">
               {fmtDollar(totalRaise)} raise
             </span>
@@ -217,7 +233,8 @@ export default function Program() {
             <div className="font-body text-gray text-lg leading-relaxed space-y-4">
               <p>
                 A <strong className="text-dark">{fmtDollar(totalRaise)}</strong> fund targeting families
-                earning {midScenario ? fmtPct(0.80) : ''} AMI in <strong className="text-dark">{geoLabel}</strong> could
+                earning {midScenario ? fmtPct(0.80) : ''} AMI across{' '}
+                <strong className="text-dark">{isMultiGeo ? `${geoBreakdown!.length} geographies in ${stateName}` : geoLabel}</strong> could
                 help <strong className="text-dark">{fmtNumber(totalHomeowners)} families</strong> achieve
                 homeownership over 10 years
                 {yr10 ? <>, creating <strong className="text-green">{fmtDollar(yr10.equityCreated)}</strong> in homeowner equity</> : ''}.
@@ -303,6 +320,59 @@ export default function Program() {
                     <Line type="monotone" dataKey="roi" stroke={CHART_COLORS.green} strokeWidth={2.5} dot={false} name="ROI" />
                   </LineChart>
                 </ResponsiveContainer>
+              </Card>
+            </div>
+          </Section>
+        )}
+
+        {/* Geographic Distribution — only when multi-geo */}
+        {geoBreakdown && geoBreakdown.length > 1 && (
+          <Section alt>
+            <H2 className="mb-8 text-center">Geographic Distribution</H2>
+            <div className="max-w-4xl mx-auto">
+              {/* Allocation bar */}
+              <div className="flex h-8 rounded-lg overflow-hidden mb-6">
+                {geoBreakdown.map((gb, i) => {
+                  const colors = ['#3D7A58', '#1A2930', '#7BB394', '#5BA37E', '#2E6046', '#4A9268'];
+                  return (
+                    <div
+                      key={gb.geo.geoId}
+                      style={{ width: `${gb.geo.allocationPct * 100}%`, backgroundColor: colors[i % colors.length] }}
+                      className="flex items-center justify-center text-white text-xs font-bold font-body truncate px-1"
+                      title={`${gb.geo.geoLabel}: ${Math.round(gb.geo.allocationPct * 100)}%`}
+                    >
+                      {Math.round(gb.geo.allocationPct * 100)}%
+                    </div>
+                  );
+                })}
+              </div>
+
+              <Card>
+                <table className="w-full font-body text-sm">
+                  <thead>
+                    <tr className="text-left border-b border-border">
+                      <th className="py-2 pr-4 font-bold text-dark">Geography</th>
+                      <th className="py-2 pr-4 font-bold text-dark text-right">Allocation</th>
+                      <th className="py-2 pr-4 font-bold text-dark text-right">Homeowners</th>
+                      <th className="py-2 pr-4 font-bold text-dark text-right">Equity (Yr 10)</th>
+                      <th className="py-2 font-bold text-dark text-right">Avg MHV</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {geoBreakdown.map(gb => {
+                      const yr10equity = gb.blended[9]?.totalEquityCreated || 0;
+                      return (
+                        <tr key={gb.geo.geoId} className="border-b border-border/50">
+                          <td className="py-2 pr-4 font-medium text-dark">{gb.geo.geoLabel}</td>
+                          <td className="py-2 pr-4 text-right">{fmtPct(gb.geo.allocationPct)}</td>
+                          <td className="py-2 pr-4 text-right">{fmtNumber(gb.totalHomeowners)}</td>
+                          <td className="py-2 pr-4 text-right">{fmtDollar(yr10equity)}</td>
+                          <td className="py-2 text-right">{fmtDollar(gb.geo.medianHomeValue)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </Card>
             </div>
           </Section>
@@ -445,26 +515,59 @@ export default function Program() {
               {scenarios.length > 0 && (
                 <div className="mt-8 pt-6 border-t border-border">
                   <Label className="block mb-4">Scenario Breakdown</Label>
-                  <table className="w-full font-body text-sm">
-                    <thead>
-                      <tr className="text-left border-b border-border">
-                        <th className="py-2 pr-4 font-bold text-dark">Scenario</th>
-                        <th className="py-2 pr-4 font-bold text-dark">Homeowners</th>
-                        <th className="py-2 pr-4 font-bold text-dark">Income</th>
-                        <th className="py-2 font-bold text-dark">Home Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {scenarios.map(s => (
-                        <tr key={s.name} className="border-b border-border/50">
-                          <td className="py-2 pr-4 font-medium text-dark">{s.name}</td>
-                          <td className="py-2 pr-4">{fmtNumber(s.homeowners)}</td>
-                          <td className="py-2 pr-4">{fmtDollar(s.medianIncome)}</td>
-                          <td className="py-2">{fmtDollar(s.medianHomeValue)}</td>
-                        </tr>
+                  {isMultiGeo ? (
+                    // Multi-geo: group scenarios by geography
+                    <div className="space-y-6">
+                      {geoBreakdown!.map(gb => (
+                        <div key={gb.geo.geoId}>
+                          <p className="font-body text-xs font-bold uppercase tracking-wider text-green mb-2">
+                            {gb.geo.geoLabel} ({fmtPct(gb.geo.allocationPct)} allocation)
+                          </p>
+                          <table className="w-full font-body text-sm">
+                            <thead>
+                              <tr className="text-left border-b border-border">
+                                <th className="py-1.5 pr-4 font-bold text-dark">Scenario</th>
+                                <th className="py-1.5 pr-4 font-bold text-dark">Homeowners</th>
+                                <th className="py-1.5 pr-4 font-bold text-dark">Income</th>
+                                <th className="py-1.5 font-bold text-dark">Home Value</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {gb.scenarioResults.map(sr => (
+                                <tr key={`${gb.geo.geoId}-${sr.scenario.name}`} className="border-b border-border/50">
+                                  <td className="py-1.5 pr-4 font-medium text-dark">{sr.scenario.name}</td>
+                                  <td className="py-1.5 pr-4">{fmtNumber(sr.cohorts.reduce((s: number, c: any) => s + c.homeownerCount, 0))}</td>
+                                  <td className="py-1.5 pr-4">{fmtDollar(sr.scenario.medianIncome)}</td>
+                                  <td className="py-1.5">{fmtDollar(sr.scenario.medianHomeValue)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+                  ) : (
+                    <table className="w-full font-body text-sm">
+                      <thead>
+                        <tr className="text-left border-b border-border">
+                          <th className="py-2 pr-4 font-bold text-dark">Scenario</th>
+                          <th className="py-2 pr-4 font-bold text-dark">Homeowners</th>
+                          <th className="py-2 pr-4 font-bold text-dark">Income</th>
+                          <th className="py-2 font-bold text-dark">Home Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {scenarios.map(s => (
+                          <tr key={s.name} className="border-b border-border/50">
+                            <td className="py-2 pr-4 font-medium text-dark">{s.name}</td>
+                            <td className="py-2 pr-4">{fmtNumber(s.homeowners)}</td>
+                            <td className="py-2 pr-4">{fmtDollar(s.medianIncome)}</td>
+                            <td className="py-2">{fmtDollar(s.medianHomeValue)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               )}
             </Card>
@@ -481,6 +584,7 @@ export default function Program() {
               Edit Program
             </Button>
             <PdfExportButton fund={fund} programName={programName} includeAffordabilitySensitivity={includeAffordabilitySensitivity} />
+            <ExcelExportButton fund={fund} programName={programName} />
             <Button variant="outline" onClick={() => navigate('/explore')}>
               Explore Another Market
             </Button>

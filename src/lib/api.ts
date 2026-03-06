@@ -137,6 +137,34 @@ export async function downloadProformaPDF(fund: FundConfig, programName?: string
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
+// ── Pro Forma Excel ──
+
+export async function downloadProformaExcel(fund: FundConfig, programName?: string): Promise<void> {
+  const url = `${API_BASE}/v2/funds/report/xlsx`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fund, programName }),
+  });
+
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({ error: resp.statusText }));
+    throw new Error(body.error || `Excel generation failed: ${resp.status}`);
+  }
+
+  const blob = await resp.blob();
+  const filename = resp.headers.get('Content-Disposition')?.match(/filename="(.+?)"/)?.[1]
+    || `${(programName || 'Homium-Program').replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '-')}-Pro-Forma.xlsx`;
+
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+
 // ── Formatting Helpers ──
 
 export function fmtDollar(n: number, decimals = 0): string {

@@ -20,6 +20,7 @@ type EventName =
   | 'lead_form_shown'
   | 'lead_form_submitted'
   | 'pdf_export'
+  | 'excel_export'
   | 'cta_click'
 
 export function trackEvent(event: EventName, params?: Record<string, string | number | boolean>) {

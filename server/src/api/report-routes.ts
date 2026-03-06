@@ -14,6 +14,7 @@ import { toLegacyAssumptions, FundConfig } from '../engine/types';
 import { generateProformaHTML, ProformaData } from '../reports/proforma-report';
 import { htmlToPdfBuffer } from '../reports/pdf-generator';
 import { sendProFormaEmail } from '../reports/email-service';
+import { generateProformaExcel } from '../reports/excel-generator';
 
 const router = Router();
 
@@ -155,6 +156,28 @@ router.post('/report/pdf', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   } finally {
     generating = false;
+  }
+});
+
+// POST /report/xlsx — Generate + download pro forma Excel
+router.post('/report/xlsx', async (req, res) => {
+  const { fund, programName } = req.body;
+  if (!fund) {
+    return res.status(400).json({ success: false, error: 'fund configuration required' });
+  }
+
+  try {
+    const data = buildProformaData(fund, programName);
+    const buffer = await generateProformaExcel(data);
+    const filename = `${data.programName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '-')}-Pro-Forma.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.send(buffer);
+  } catch (err: any) {
+    console.error('Pro forma Excel error:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

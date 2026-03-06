@@ -12,7 +12,7 @@ import {
   runFundModel, computeSmartDefaults, fmtDollar, fmtPct
 } from '../lib/api'
 import { trackEvent } from '../lib/analytics'
-import type { WizardState, FundConfig, ScenarioConfig } from '../lib/types'
+import type { WizardState, FundConfig, ScenarioConfig, GeoAllocation } from '../lib/types'
 import { DEFAULT_WIZARD_STATE } from '../lib/types'
 import { generatePayoffSchedule, PAYOFF_PRESETS } from '../lib/payoff'
 
@@ -174,9 +174,13 @@ export default function Studio() {
     }
   }, [wizard.zip, stateZips])
 
-  // Computed borrower values
-  const borrowerIncome = wizard.marketData.medianIncome * wizard.targetAMIPct
-  const borrowerHomePrice = wizard.marketData.medianHomeValue * wizard.targetHomePricePct
+  // Computed borrower values (with override support)
+  const baseIncome = wizard.useOverrides && wizard.overrideMedianIncome
+    ? wizard.overrideMedianIncome : wizard.marketData.medianIncome
+  const baseHomeValue = wizard.useOverrides && wizard.overrideMedianHomeValue
+    ? wizard.overrideMedianHomeValue : wizard.marketData.medianHomeValue
+  const borrowerIncome = baseIncome * wizard.targetAMIPct
+  const borrowerHomePrice = baseHomeValue * wizard.targetHomePricePct
   const maxPITI = (borrowerIncome / 12) * 0.35
 
   // Computed program values
@@ -222,6 +226,8 @@ export default function Studio() {
           county: wizard.county,
           zipCodes: wizard.zip ? [wizard.zip] : undefined,
           label: wizard.marketLabel || wizard.stateName,
+          allocations: wizard.geoAllocations && wizard.geoAllocations.length > 1
+            ? wizard.geoAllocations : undefined,
         },
         raise: {
           totalRaise: effectiveRaise,
@@ -272,6 +278,7 @@ export default function Studio() {
         fullResult: result,
         topOffSchedule: result.topOffSchedule,
         includeAffordabilitySensitivity: wizard.includeAffordabilitySensitivity,
+        geoBreakdown: result.geoBreakdown,
       }))
       sessionStorage.setItem('programState', wizard.state)
       sessionStorage.setItem('programStateName', wizard.stateName)
@@ -387,6 +394,60 @@ function StepGeography({ wizard, counties, countiesLoading, countyZips, onUpdate
   onUpdate: (p: Partial<WizardState>) => void
   onNext: () => void
 }) {
+  const [showMultiGeo, setShowMultiGeo] = useState(false)
+  const geos = wizard.geoAllocations || []
+
+  const addCurrentGeo = () => {
+    if (!wizard.state) return
+    const label = wizard.zip
+      ? `${wizard.zip} (${wizard.marketLabel})`
+      : wizard.county
+        ? `${wizard.county}, ${wizard.state}`
+        : `${wizard.stateName} (statewide)`
+    const geoId = wizard.zip || wizard.county || wizard.state
+    // Don't add duplicates
+    if (geos.some(g => g.geoId === geoId)) return
+    const newGeo: GeoAllocation = {
+      geoId,
+      geoType: wizard.zip ? 'zip' : 'county',
+      geoLabel: label,
+      state: wizard.state,
+      county: wizard.county,
+      zip: wizard.zip,
+      allocationPct: 0, // Will normalize
+      medianIncome: wizard.marketData.medianIncome,
+      medianHomeValue: wizard.marketData.medianHomeValue,
+    }
+    const updated = [...geos, newGeo]
+    // Auto-normalize allocations to equal weights
+    const pct = 1 / updated.length
+    const normalized = updated.map(g => ({ ...g, allocationPct: Math.round(pct * 100) / 100 }))
+    // Fix rounding to sum to 1.0
+    const diff = 1 - normalized.reduce((s, g) => s + g.allocationPct, 0)
+    if (normalized.length > 0) normalized[0].allocationPct += Math.round(diff * 100) / 100
+    onUpdate({ geoAllocations: normalized })
+  }
+
+  const removeGeo = (geoId: string) => {
+    const updated = geos.filter(g => g.geoId !== geoId)
+    if (updated.length === 0) {
+      onUpdate({ geoAllocations: undefined })
+      return
+    }
+    const pct = 1 / updated.length
+    const normalized = updated.map(g => ({ ...g, allocationPct: Math.round(pct * 100) / 100 }))
+    const diff = 1 - normalized.reduce((s, g) => s + g.allocationPct, 0)
+    if (normalized.length > 0) normalized[0].allocationPct += Math.round(diff * 100) / 100
+    onUpdate({ geoAllocations: normalized })
+  }
+
+  const updateAllocation = (geoId: string, pct: number) => {
+    const updated = geos.map(g => g.geoId === geoId ? { ...g, allocationPct: pct } : g)
+    onUpdate({ geoAllocations: updated })
+  }
+
+  const allocSum = geos.reduce((s, g) => s + g.allocationPct, 0)
+
   return (
     <Card>
       <H2>Choose Your Market</H2>
@@ -454,6 +515,71 @@ function StepGeography({ wizard, counties, countiesLoading, countyZips, onUpdate
         </Select>
       )}
 
+      {/* Advanced: Multi-Geography Program */}
+      <div className="border border-border rounded-md mt-6">
+        <button
+          onClick={() => setShowMultiGeo(!showMultiGeo)}
+          className="w-full flex items-center justify-between px-4 py-3 font-body text-sm text-lightGray hover:text-dark transition-colors cursor-pointer"
+        >
+          <span>Advanced: Multi-Geography Program {geos.length > 0 && `(${geos.length} geographies)`}</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`transition-transform ${showMultiGeo ? 'rotate-180' : ''}`}>
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        {showMultiGeo && (
+          <div className="px-4 pb-4 space-y-4">
+            <p className="font-body text-xs text-lightGray">
+              Add multiple geographies to blend into a single program. Each gets its own LO/MID/HI scenarios.
+            </p>
+
+            {wizard.state && wizard.marketData.medianIncome > 0 && (
+              <Button variant="outline" onClick={addCurrentGeo}>
+                Add {wizard.zip || wizard.county || wizard.stateName} to Program
+              </Button>
+            )}
+
+            {geos.length > 0 && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-[1fr_80px_80px_80px_32px] gap-2 font-body text-[10px] font-bold uppercase tracking-wider text-lightGray">
+                  <span>Geography</span>
+                  <span>Income</span>
+                  <span>MHV</span>
+                  <span>Alloc %</span>
+                  <span></span>
+                </div>
+                {geos.map(g => (
+                  <div key={g.geoId} className="grid grid-cols-[1fr_80px_80px_80px_32px] gap-2 items-center font-body text-sm">
+                    <span className="text-dark truncate">{g.geoLabel}</span>
+                    <span className="text-lightGray">{fmtDollar(g.medianIncome)}</span>
+                    <span className="text-lightGray">{fmtDollar(g.medianHomeValue)}</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={Math.round(g.allocationPct * 100)}
+                      onChange={e => updateAllocation(g.geoId, parseInt(e.target.value || '0') / 100)}
+                      className="font-body text-dark text-sm px-2 py-1 border border-border rounded w-16 focus:border-green focus:outline-none"
+                    />
+                    <button
+                      onClick={() => removeGeo(g.geoId)}
+                      className="text-lightGray hover:text-red-500 cursor-pointer"
+                      title="Remove"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+                {Math.abs(allocSum - 1) > 0.01 && (
+                  <p className="font-body text-xs text-red-500">
+                    Allocations sum to {Math.round(allocSum * 100)}% (should be 100%)
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="flex justify-end mt-8">
         <Button onClick={onNext} disabled={!wizard.state}>
           Next: Define Borrower
@@ -472,6 +598,8 @@ function StepBorrower({ wizard, borrowerIncome, borrowerHomePrice, onUpdate, onN
   onNext: () => void
   onBack: () => void
 }) {
+  const [showOverrides, setShowOverrides] = useState(false)
+
   return (
     <Card>
       <H2>Define Your Borrower</H2>
@@ -480,7 +608,10 @@ function StepBorrower({ wizard, borrowerIncome, borrowerHomePrice, onUpdate, onN
       <div className="space-y-8">
         <div>
           <div className="flex justify-between items-baseline mb-2">
-            <Label>Target AMI</Label>
+            <Label>
+              Target AMI
+              {wizard.useOverrides && <span className="ml-2 text-xs text-green font-normal">(manual)</span>}
+            </Label>
             <span className="font-body text-dark font-medium">{Math.round(wizard.targetAMIPct * 100)}%</span>
           </div>
           <input
@@ -545,6 +676,59 @@ function StepBorrower({ wizard, borrowerIncome, borrowerHomePrice, onUpdate, onN
             max={10}
             hint="Annual wage growth for target AMI cohort"
           />
+        </div>
+
+        {/* Advanced: Manual Value Overrides */}
+        <div className="border border-border rounded-md">
+          <button
+            onClick={() => setShowOverrides(!showOverrides)}
+            className="w-full flex items-center justify-between px-4 py-3 font-body text-sm text-lightGray hover:text-dark transition-colors cursor-pointer"
+          >
+            <span>Advanced: Manual Value Overrides</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`transition-transform ${showOverrides ? 'rotate-180' : ''}`}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          {showOverrides && (
+            <div className="px-4 pb-4 space-y-4">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="useOverrides"
+                  checked={wizard.useOverrides || false}
+                  onChange={e => onUpdate({
+                    useOverrides: e.target.checked,
+                    overrideMedianIncome: wizard.overrideMedianIncome || wizard.marketData.medianIncome,
+                    overrideMedianHomeValue: wizard.overrideMedianHomeValue || wizard.marketData.medianHomeValue,
+                  })}
+                  className="w-4 h-4 accent-green"
+                />
+                <label htmlFor="useOverrides" className="font-body text-dark text-sm cursor-pointer">
+                  Override market data with custom values
+                </label>
+              </div>
+              {wizard.useOverrides && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="block mb-1 text-xs">Median Home Value</Label>
+                    <DollarInput
+                      value={wizard.overrideMedianHomeValue}
+                      onChange={v => onUpdate({ overrideMedianHomeValue: v })}
+                      placeholder="e.g. $450,000"
+                    />
+                  </div>
+                  <div>
+                    <Label className="block mb-1 text-xs">Area Median Income</Label>
+                    <DollarInput
+                      value={wizard.overrideMedianIncome}
+                      onChange={v => onUpdate({ overrideMedianIncome: v })}
+                      placeholder="e.g. $98,000"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -887,12 +1071,31 @@ function LivePreview({ step, wizard, effectiveRaise, borrowerIncome, borrowerHom
           {wizard.fundName && (
             <p className="font-body text-green text-xs font-bold uppercase tracking-wider mb-1">{wizard.fundName}</p>
           )}
-          <H3>{wizard.marketLabel || wizard.stateName}</H3>
-          {wizard.marketData.medianIncome > 0 && (
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              <MiniStat label="AMI" value={fmtDollar(wizard.marketData.medianIncome)} />
-              <MiniStat label="MHV" value={fmtDollar(wizard.marketData.medianHomeValue)} />
-            </div>
+          {wizard.geoAllocations && wizard.geoAllocations.length > 1 ? (
+            <>
+              <H3>{wizard.geoAllocations.length} Markets</H3>
+              <div className="space-y-1.5 mt-2">
+                {wizard.geoAllocations.map(g => (
+                  <div key={g.geoId} className="flex justify-between items-center font-body text-xs">
+                    <span className="text-dark truncate mr-2">{g.geoLabel}</span>
+                    <span className="text-lightGray whitespace-nowrap">{Math.round(g.allocationPct * 100)}%</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <H3>{wizard.marketLabel || wizard.stateName}</H3>
+              {wizard.useOverrides && (
+                <p className="font-body text-xs text-green mt-1">Manual overrides active</p>
+              )}
+              {wizard.marketData.medianIncome > 0 && (
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                  <MiniStat label="AMI" value={fmtDollar(wizard.useOverrides && wizard.overrideMedianIncome ? wizard.overrideMedianIncome : wizard.marketData.medianIncome)} />
+                  <MiniStat label="MHV" value={fmtDollar(wizard.useOverrides && wizard.overrideMedianHomeValue ? wizard.overrideMedianHomeValue : wizard.marketData.medianHomeValue)} />
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

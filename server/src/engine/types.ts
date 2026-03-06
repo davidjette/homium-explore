@@ -26,6 +26,26 @@ export interface GeographyConfig {
   county?: string;
   zipCodes?: string[];            // Specific ZIPs to target
   label: string;                  // Human-readable: "Salt Lake Metro", "Phoenix MSA"
+  allocations?: GeoAllocation[];  // Multi-geo mode: multiple geographies with allocation weights
+}
+
+export interface GeoAllocation {
+  geoId: string;              // unique key
+  geoType: 'county' | 'zip';
+  geoLabel: string;           // "Salt Lake County" or "84104 (SLC)"
+  state: string;
+  county?: string;
+  zip?: string;
+  allocationPct: number;      // share of totalRaise, must sum to 1.0
+  medianIncome: number;
+  medianHomeValue: number;
+}
+
+export interface GeoBreakdownResult {
+  geo: GeoAllocation;
+  scenarioResults: ScenarioResult[];
+  blended: FundYearState[];
+  totalHomeowners: number;
 }
 
 export interface RaiseConfig {
@@ -181,6 +201,7 @@ export interface FundModelResult {
   blended: FundYearState[];
   totalHomeowners: number;
   totalRaise: number;
+  geoBreakdown?: GeoBreakdownResult[];
 }
 
 // ── Legacy compatibility (maps ScenarioConfig → old ScenarioAssumptions) ──

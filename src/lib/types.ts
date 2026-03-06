@@ -5,6 +5,26 @@ export interface GeographyConfig {
   county?: string;
   zipCodes?: string[];
   label: string;
+  allocations?: GeoAllocation[];
+}
+
+export interface GeoAllocation {
+  geoId: string;
+  geoType: 'county' | 'zip';
+  geoLabel: string;
+  state: string;
+  county?: string;
+  zip?: string;
+  allocationPct: number;
+  medianIncome: number;
+  medianHomeValue: number;
+}
+
+export interface GeoBreakdownResult {
+  geo: GeoAllocation;
+  scenarioResults: ScenarioResult[];
+  blended: FundYearState[];
+  totalHomeowners: number;
 }
 
 export interface RaiseConfig {
@@ -142,6 +162,7 @@ export interface FundModelResult {
   scenarioResults: ScenarioResult[];
   blended: FundYearState[];
   topOffSchedule?: TopOffYearState[];
+  geoBreakdown?: GeoBreakdownResult[];
 }
 
 export interface HousingStateData {
@@ -236,6 +257,14 @@ export interface WizardState {
   includeAffordabilitySensitivity: boolean;
   fixedHomeCount?: number;     // Fixed development size (e.g. 46) for top-off analysis
   scenarios: ScenarioConfig[];
+
+  // Advanced: Multi-Geography
+  geoAllocations?: GeoAllocation[];
+
+  // Advanced: Manual Value Overrides
+  overrideMedianHomeValue?: number;
+  overrideMedianIncome?: number;
+  useOverrides?: boolean;
 }
 
 export const DEFAULT_WIZARD_STATE: WizardState = {

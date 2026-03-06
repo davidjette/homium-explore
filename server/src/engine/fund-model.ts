@@ -6,7 +6,8 @@
  */
 import {
   FundConfig, FundModelResult, ScenarioResult, ScenarioConfig,
-  FundYearState, toLegacyAssumptions, DEFAULT_PAYOFF_SCHEDULE,
+  FundYearState, GeoAllocation, GeoBreakdownResult,
+  toLegacyAssumptions, DEFAULT_PAYOFF_SCHEDULE,
 } from './types';
 import { calculateAffordability } from './affordability';
 import { runScenario } from './fund-aggregator';
@@ -52,8 +53,118 @@ export function validateFund(fund: FundConfig): string[] {
   return fund.scenarios.flatMap(s => validateScenario(fund, s));
 }
 
+/** Generate LO/MID/HI scenarios from a geography's income/MHV */
+function autoScenariosForGeo(
+  geo: GeoAllocation,
+  raiseAllocation: number,
+): ScenarioConfig[] {
+  const income = geo.medianIncome;
+  const mhv = geo.medianHomeValue;
+  return [
+    { name: 'LO', weight: 0.20, raiseAllocation: raiseAllocation * 0.20, medianIncome: Math.round(income * 0.75), medianHomeValue: Math.round(mhv * 0.80) },
+    { name: 'MID', weight: 0.60, raiseAllocation: raiseAllocation * 0.60, medianIncome: Math.round(income), medianHomeValue: Math.round(mhv) },
+    { name: 'HI', weight: 0.20, raiseAllocation: raiseAllocation * 0.20, medianIncome: Math.round(income * 1.35), medianHomeValue: Math.round(mhv * 1.40) },
+  ];
+}
+
+/** Sum two FundYearState arrays element-wise */
+function sumFundYears(a: FundYearState[], b: FundYearState[]): FundYearState[] {
+  const maxLen = Math.max(a.length, b.length);
+  const result: FundYearState[] = [];
+  for (let i = 0; i < maxLen; i++) {
+    const ya = a[i] || {} as FundYearState;
+    const yb = b[i] || {} as FundYearState;
+    result.push({
+      year: ya.year || yb.year,
+      calendarYear: ya.calendarYear || yb.calendarYear,
+      newDonations: (ya.newDonations || 0) + (yb.newDonations || 0),
+      newContributions: (ya.newContributions || 0) + (yb.newContributions || 0),
+      reinvestedFunds: (ya.reinvestedFunds || 0) + (yb.reinvestedFunds || 0),
+      capitalDeployed: (ya.capitalDeployed || 0) + (yb.capitalDeployed || 0),
+      programFee: (ya.programFee || 0) + (yb.programFee || 0),
+      managementFee: (ya.managementFee || 0) + (yb.managementFee || 0),
+      newHomeowners: (ya.newHomeowners || 0) + (yb.newHomeowners || 0),
+      totalHomeownersCum: (ya.totalHomeownersCum || 0) + (yb.totalHomeownersCum || 0),
+      activeHomeowners: (ya.activeHomeowners || 0) + (yb.activeHomeowners || 0),
+      exitingHomeowners: (ya.exitingHomeowners || 0) + (yb.exitingHomeowners || 0),
+      returnedCapital: (ya.returnedCapital || 0) + (yb.returnedCapital || 0),
+      roiAnnual: 0, // Will recalculate after summing
+      roiCumulative: 0,
+      fundBalance: (ya.fundBalance || 0) + (yb.fundBalance || 0),
+      totalEquityCreated: (ya.totalEquityCreated || 0) + (yb.totalEquityCreated || 0),
+      outstandingPositionValue: (ya.outstandingPositionValue || 0) + (yb.outstandingPositionValue || 0),
+      fundNAV: (ya.fundNAV || 0) + (yb.fundNAV || 0),
+      lpCapitalIn: (ya.lpCapitalIn || 0) + (yb.lpCapitalIn || 0),
+      cumulativeDistributions: (ya.cumulativeDistributions || 0) + (yb.cumulativeDistributions || 0),
+    });
+  }
+  // Recalculate ROI from summed values
+  for (const yr of result) {
+    const totalValue = yr.cumulativeDistributions + yr.fundNAV;
+    yr.roiCumulative = yr.lpCapitalIn > 0 ? (totalValue - yr.lpCapitalIn) / yr.lpCapitalIn : 0;
+  }
+  let prevTotal = result[0]?.lpCapitalIn || 0;
+  for (const yr of result) {
+    const totalValue = yr.cumulativeDistributions + yr.fundNAV;
+    yr.roiAnnual = prevTotal > 0 ? (totalValue - prevTotal) / prevTotal : 0;
+    prevTotal = totalValue;
+  }
+  return result;
+}
+
 /** Run a complete fund model from a FundConfig */
 export function runFundModel(fund: FundConfig): FundModelResult {
+  // Multi-geo mode: run each geography independently and sum results
+  const allocations = fund.geography.allocations;
+  if (allocations && allocations.length > 1) {
+    const geoBreakdown: GeoBreakdownResult[] = [];
+    let programBlended: FundYearState[] | null = null;
+    let programScenarioResults: ScenarioResult[] = [];
+    let totalHomeowners = 0;
+
+    for (const geo of allocations.slice(0, 20)) { // Cap at 20 geos
+      const geoRaise = fund.raise.totalRaise * geo.allocationPct;
+      const geoScenarios = autoScenariosForGeo(geo, geoRaise);
+
+      const subFund: FundConfig = {
+        ...fund,
+        geography: {
+          state: geo.state,
+          county: geo.county,
+          label: geo.geoLabel,
+        },
+        raise: { ...fund.raise, totalRaise: geoRaise },
+        scenarios: geoScenarios,
+      };
+
+      const subResult = runFundModel(subFund); // Recursive call (single-geo path)
+      geoBreakdown.push({
+        geo,
+        scenarioResults: subResult.scenarioResults,
+        blended: subResult.blended,
+        totalHomeowners: subResult.totalHomeowners,
+      });
+      programScenarioResults.push(...subResult.scenarioResults);
+      totalHomeowners += subResult.totalHomeowners;
+
+      if (!programBlended) {
+        programBlended = subResult.blended.map(yr => ({ ...yr }));
+      } else {
+        programBlended = sumFundYears(programBlended, subResult.blended);
+      }
+    }
+
+    return {
+      fund,
+      scenarioResults: programScenarioResults,
+      blended: programBlended || [],
+      totalHomeowners,
+      totalRaise: fund.raise.totalRaise,
+      geoBreakdown,
+    };
+  }
+
+  // Single-geo path (original logic)
   const maxYears = fund.program.maxHoldYears || 30;
   const scenarioResults: ScenarioResult[] = [];
 
