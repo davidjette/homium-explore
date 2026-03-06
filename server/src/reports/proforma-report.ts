@@ -733,7 +733,7 @@ export function generateProformaHTML(data: ProformaData): string {
     /* ── DATA ROOM (Page 3) ── */
     .dr-cols{display:flex;gap:28px;flex:1}
     .dr-left{flex:0 0 480px;display:flex;flex-direction:column}
-    .dr-right{flex:1}
+    .dr-right{flex:1;display:flex;flex-direction:column}
     .dr-head{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:${GREEN};padding-bottom:4px;border-bottom:2px solid ${GREEN};margin-bottom:8px}
     .dr-borrow-row{display:flex;align-items:stretch;gap:0}
     .dr-b-card{flex:1;background:${CREAM};border:1px solid ${BORDER};border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;box-shadow:0 2px 8px rgba(0,0,0,.05)}
@@ -767,6 +767,7 @@ export function generateProformaHTML(data: ProformaData): string {
     .proj-table td:first-child{text-align:left;font-weight:600}
     .proj-table tbody tr:nth-child(even) td{background:${CREAM}}
     .proj-table tr.hl-row td{font-weight:700;color:${DARK};background:${GREEN_BG}}
+    .proj-table-full{flex:1}
     .proj-table-full td{padding:10px 12px;font-size:14px}
     .proj-table-full th{padding:10px 12px}
 
