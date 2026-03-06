@@ -24,6 +24,7 @@ export interface ProformaData {
   programName: string;
   geoLabel: string;
   topOff?: TopOffYearState[];
+  geoBreakdown?: import('../engine/types').GeoBreakdownResult[];
 }
 
 const STATE_NAMES: Record<string, string> = {

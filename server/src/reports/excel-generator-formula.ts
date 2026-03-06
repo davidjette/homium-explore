@@ -14,7 +14,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ProformaData } from './proforma-report';
 import {
-  FundConfig, ScenarioResult, FundYearState,
+  FundConfig, ScenarioResult, FundYearState, GeoBreakdownResult, GeoAllocation,
 } from '../engine/types';
 
 // ── Styling constants (matches PDF: GREEN #3D7A58, DARK #1A2930) ──
@@ -271,7 +271,7 @@ function writeRowLabels(ws: ExcelJS.Worksheet) {
 
 // ── Scenarios sheet (same as values version) ──
 
-function buildScenariosSheet(wb: ExcelJS.Workbook, fund: FundConfig, result: any) {
+function buildScenariosSheet(wb: ExcelJS.Workbook, fund: FundConfig, result: any, geoBreakdown?: GeoBreakdownResult[]) {
   const ws = wb.addWorksheet('Scenarios');
   const scenarios = result.scenarioResults;
 
@@ -358,6 +358,42 @@ function buildScenariosSheet(wb: ExcelJS.Workbook, fund: FundConfig, result: any
     if (i % 2 === 1) {
       for (let c = 1; c <= 8; c++) {
         ws.getCell(r, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${CREAM}` } } as ExcelJS.FillPattern;
+      }
+    }
+  }
+
+  // Geography Allocation section (multi-geo only)
+  if (geoBreakdown && geoBreakdown.length > 1) {
+    const geoStartRow = 19;
+    ws.getCell(geoStartRow, 1).value = 'Geography Allocation';
+    ws.getCell(geoStartRow, 1).font = SECTION_FONT;
+    for (let c = 1; c <= 8; c++) {
+      ws.getCell(geoStartRow, c).fill = SECTION_FILL;
+      ws.getCell(geoStartRow, c).border = { bottom: THIN_BORDER };
+    }
+
+    // Column headers
+    const geoHeaders = ['Geography', 'State', 'Allocation %', 'Raise Amount', 'Median Income', 'Median Home Value'];
+    for (let h = 0; h < geoHeaders.length; h++) {
+      ws.getCell(geoStartRow + 1, h + 1).value = geoHeaders[h];
+      ws.getCell(geoStartRow + 1, h + 1).font = HEADER_FONT;
+      ws.getCell(geoStartRow + 1, h + 1).fill = HEADER_FILL;
+      ws.getCell(geoStartRow + 1, h + 1).alignment = { horizontal: 'center' };
+    }
+
+    for (let g = 0; g < geoBreakdown.length; g++) {
+      const geo = geoBreakdown[g].geo;
+      const r = geoStartRow + 2 + g;
+      setLabel(ws, r, 1, geo.geoLabel);
+      setLabel(ws, r, 2, geo.state);
+      setVal(ws, r, 3, geo.allocationPct, PCT);
+      setVal(ws, r, 4, fund.raise.totalRaise * geo.allocationPct, CURRENCY);
+      setVal(ws, r, 5, geo.medianIncome, CURRENCY);
+      setVal(ws, r, 6, geo.medianHomeValue, CURRENCY);
+      if (g % 2 === 1) {
+        for (let c = 1; c <= 6; c++) {
+          ws.getCell(r, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${CREAM}` } } as ExcelJS.FillPattern;
+        }
       }
     }
   }
@@ -637,19 +673,25 @@ function buildFormulaBlendedSheet(
   fund: FundConfig,
   blendedResults: FundYearState[],
   scenarioNames: string[],
+  isMultiGeo = false,
 ) {
   const ws = wb.addWorksheet('Blended');
   const baseYear = fund.raise.baseYear;
-  const sn = scenarioNames; // e.g. ['LO', 'MID', 'HI']
+  const sn = scenarioNames; // e.g. ['LO', 'MID', 'HI'] or geo sheet names
 
-  // Cross-sheet sum helper: "LO!{cl}{r}+MID!{cl}{r}+HI!{cl}{r}"
+  // Cross-sheet sum helper: "'LO'!{cl}{r}+'MID'!{cl}{r}+'HI'!{cl}{r}"
+  // Sheet names with spaces need single-quoting for valid Excel cross-sheet refs
+  const qn = (s: string) => `'${s}'`;
   const xsum = (cl: string, r: number) =>
-    sn.map(s => `${s}!${cl}${r}`).join('+');
+    sn.map(s => `${qn(s)}!${cl}${r}`).join('+');
 
   // ── Title — rows 1-2 are logo, title in rows 3-4 ──
   ws.getCell(3, 1).value = fund.name;
   ws.getCell(3, 1).font = TITLE_FONT;
-  ws.getCell(4, 1).value = 'Pro Forma — Blended';
+  const subtitle = isMultiGeo
+    ? `Pro Forma — Blended (${sn.length} Geographies)`
+    : 'Pro Forma — Blended';
+  ws.getCell(4, 1).value = subtitle;
   ws.getCell(4, 1).font = SUBTITLE_FONT;
 
   // ── Parameters in col C (weighted averages as values) ──
@@ -1195,38 +1237,279 @@ function buildShareConversionSheet(wb: ExcelJS.Workbook, fund: FundConfig) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// MULTI-GEO: PER-GEO FORMULA SHEET (reuses buildFormulaModelSheet)
+// ══════════════════════════════════════════════════════════════════════════
+
+function buildGeoFormulaSheet(
+  wb: ExcelJS.Workbook,
+  fund: FundConfig,
+  gb: GeoBreakdownResult,
+  usedNames: string[],
+): string {
+  // Generate safe tab name (31 char limit, deduplicate)
+  let tabName = gb.geo.geoLabel.substring(0, 31);
+  if (usedNames.includes(tabName)) {
+    tabName = `${gb.geo.geoLabel.substring(0, 27)}_${usedNames.length + 1}`;
+  }
+
+  // Build synthetic ScenarioResult from geo data
+  // Use MID scenario's cohort data (index 1), fallback to first available
+  const midScen = gb.scenarioResults[1] || gb.scenarioResults[0];
+  const syntheticResult: ScenarioResult = {
+    scenario: {
+      name: gb.geo.geoLabel,
+      weight: gb.geo.allocationPct,
+      raiseAllocation: fund.raise.totalRaise * gb.geo.allocationPct,
+      medianIncome: gb.geo.medianIncome,
+      medianHomeValue: gb.geo.medianHomeValue,
+    },
+    cohorts: midScen?.cohorts || [],
+    cohortStates: midScen?.cohortStates || [],
+    fundResults: gb.blended,
+    affordability: midScen?.affordability || {
+      mortgagePrincipal: 0, maxPITI: 0, pitiBeforeHomium: 0, pitiAfterHomium: 0,
+      gapBefore: 0, gapAfter: 0, homiumPrincipal: 0, downPayment: 0, reducedMortgage: 0,
+    },
+  };
+
+  buildFormulaModelSheet(wb, tabName, fund, syntheticResult);
+  return tabName;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// MULTI-GEO: GEO SUMMARY SHEET
+// ══════════════════════════════════════════════════════════════════════════
+
+function buildGeoSummarySheet(
+  wb: ExcelJS.Workbook,
+  fund: FundConfig,
+  geoBreakdown: GeoBreakdownResult[],
+  geoSheetNames: string[],
+) {
+  const ws = wb.addWorksheet('Geo Summary');
+  const geoCount = geoBreakdown.length;
+  const baseYear = fund.raise.baseYear;
+  const qn = (s: string) => `'${s}'`;
+
+  // Title — rows 1-2 reserved for logo, title in rows 3-4
+  ws.getCell(3, 1).value = fund.name;
+  ws.getCell(3, 1).font = TITLE_FONT;
+  ws.getCell(4, 1).value = 'Geography Comparison';
+  ws.getCell(4, 1).font = SUBTITLE_FONT;
+
+  // Column layout: A = metric labels, B+ = geos, last = Total
+  const dataStartCol = 2;
+  const totalCol = dataStartCol + geoCount;
+
+  // Geo column headers
+  for (let g = 0; g < geoCount; g++) {
+    const col = dataStartCol + g;
+    ws.getCell(6, col).value = geoBreakdown[g].geo.geoLabel;
+    ws.getCell(6, col).font = HEADER_FONT;
+    ws.getCell(6, col).fill = HEADER_FILL;
+    ws.getCell(6, col).alignment = { horizontal: 'center' };
+  }
+  ws.getCell(6, totalCol).value = 'Total';
+  ws.getCell(6, totalCol).font = HEADER_FONT;
+  ws.getCell(6, totalCol).fill = HEADER_FILL;
+  ws.getCell(6, totalCol).alignment = { horizontal: 'center' };
+
+  let row = 7;
+
+  // ── Allocation section ──
+  ws.getCell(row, 1).value = 'Allocation';
+  ws.getCell(row, 1).font = SECTION_FONT;
+  for (let c = 1; c <= totalCol; c++) { ws.getCell(row, c).fill = SECTION_FILL; ws.getCell(row, c).border = { bottom: THIN_BORDER }; }
+  row++;
+
+  // Allocation metrics: cross-sheet refs to geo sheet inputs (C6 = raise, C47 = income, C48 = MHV)
+  const allocMetrics: Array<[string, string | null, string, boolean]> = [
+    ['State', null, '', false],      // value, not formula
+    ['Allocation %', null, PCT, false], // value, not formula
+    ['Raise Amount', 'C6', CURRENCY, true],
+    ['Median Income', 'C47', CURRENCY, false],
+    ['Median Home Value', 'C48', CURRENCY, false],
+  ];
+
+  for (const [label, cellRef, fmt, summable] of allocMetrics) {
+    setLabel(ws, row, 1, label);
+    for (let g = 0; g < geoCount; g++) {
+      const col = dataStartCol + g;
+      if (!cellRef) {
+        // Static values
+        const val = label === 'State' ? geoBreakdown[g].geo.state : geoBreakdown[g].geo.allocationPct;
+        if (typeof val === 'string') {
+          ws.getCell(row, col).value = val;
+        } else {
+          setVal(ws, row, col, val, fmt);
+        }
+      } else {
+        setFormula(ws, row, col, `${qn(geoSheetNames[g])}!${cellRef}`, fmt);
+      }
+      ws.getCell(row, col).alignment = { horizontal: 'center' };
+    }
+    if (summable) {
+      const sumRange = `${colLetter(dataStartCol)}${row}:${colLetter(dataStartCol + geoCount - 1)}${row}`;
+      setFormula(ws, row, totalCol, `SUM(${sumRange})`, fmt);
+    }
+    row++;
+  }
+
+  row++; // spacer
+
+  // ── Year 10 Snapshot — cross-sheet refs to geo formula sheet cells ──
+  // On geo formula sheets: row 54 = Total Homeowners Cum, row 51 = Fund NAV,
+  // row 49 = Notes Outstanding, row 60 = ROI Cum, col for yr10 = O (col 15 = COL_F+9)
+  const yr10Col = colLetter(COL_F + 9); // year 10 column letter
+
+  ws.getCell(row, 1).value = 'Year 10 Snapshot';
+  ws.getCell(row, 1).font = SECTION_FONT;
+  for (let c = 1; c <= totalCol; c++) { ws.getCell(row, c).fill = SECTION_FILL; ws.getCell(row, c).border = { bottom: THIN_BORDER }; }
+  row++;
+
+  const yr10CrossRefs: Array<[string, number, string, boolean]> = [
+    ['Active Homeowners', 54, NUM, true],      // row 54 = Total Homeowners Cum
+    ['Fund NAV', 51, CURRENCY, true],           // row 51 = Total Fund Value
+    ['Notes Outstanding', 49, CURRENCY, true],  // row 49 = Notes Outstanding
+    ['Cumulative ROI', 60, PCT2, false],         // row 60 = % Total Return (Cum)
+  ];
+
+  for (const [label, srcRow, fmt, summable] of yr10CrossRefs) {
+    setLabel(ws, row, 1, label);
+    for (let g = 0; g < geoCount; g++) {
+      setFormula(ws, row, dataStartCol + g, `${qn(geoSheetNames[g])}!${yr10Col}${srcRow}`, fmt);
+      ws.getCell(row, dataStartCol + g).alignment = { horizontal: 'center' };
+    }
+    if (summable) {
+      const sumRange = `${colLetter(dataStartCol)}${row}:${colLetter(dataStartCol + geoCount - 1)}${row}`;
+      setFormula(ws, row, totalCol, `SUM(${sumRange})`, fmt);
+    }
+    row++;
+  }
+
+  row++; // spacer
+
+  // ── Year 30 Snapshot ──
+  const maxYears = Math.min(geoBreakdown[0].blended.length, MAX_YEARS);
+  const yr30Col = colLetter(COL_F + maxYears - 1);
+
+  ws.getCell(row, 1).value = `Year ${maxYears} Snapshot`;
+  ws.getCell(row, 1).font = SECTION_FONT;
+  for (let c = 1; c <= totalCol; c++) { ws.getCell(row, c).fill = SECTION_FILL; ws.getCell(row, c).border = { bottom: THIN_BORDER }; }
+  row++;
+
+  const yr30CrossRefs: Array<[string, number, string, boolean]> = [
+    ['Active Homeowners', 54, NUM, true],
+    ['Fund NAV', 51, CURRENCY, true],
+    ['Cumulative ROI', 60, PCT2, false],
+    ['Returned Capital (Cum)', 58, CURRENCY, true], // row 58 = Returned Capital
+  ];
+
+  for (const [label, srcRow, fmt, summable] of yr30CrossRefs) {
+    setLabel(ws, row, 1, label);
+    for (let g = 0; g < geoCount; g++) {
+      setFormula(ws, row, dataStartCol + g, `${qn(geoSheetNames[g])}!${yr30Col}${srcRow}`, fmt);
+      ws.getCell(row, dataStartCol + g).alignment = { horizontal: 'center' };
+    }
+    if (summable) {
+      const sumRange = `${colLetter(dataStartCol)}${row}:${colLetter(dataStartCol + geoCount - 1)}${row}`;
+      setFormula(ws, row, totalCol, `SUM(${sumRange})`, fmt);
+    }
+    row++;
+  }
+
+  row++; // spacer
+
+  // ── Annual Homeowners (collapsible) — cross-sheet refs to row 53 per year ──
+  ws.getCell(row, 1).value = 'New Homeowners by Year';
+  ws.getCell(row, 1).font = SECTION_FONT;
+  for (let c = 1; c <= totalCol; c++) { ws.getCell(row, c).fill = SECTION_FILL; ws.getCell(row, c).border = { bottom: THIN_BORDER }; }
+  row++;
+
+  const hoGroupStart = row;
+
+  for (let yr = 0; yr < maxYears; yr++) {
+    const yrCol = colLetter(COL_F + yr);
+    setLabel(ws, row, 1, `${baseYear + yr}`);
+    for (let g = 0; g < geoCount; g++) {
+      // Row 53 = New Homeowners on each geo formula sheet
+      setFormula(ws, row, dataStartCol + g, `${qn(geoSheetNames[g])}!${yrCol}53`, NUM2);
+      ws.getCell(row, dataStartCol + g).alignment = { horizontal: 'center' };
+    }
+    const sumRange = `${colLetter(dataStartCol)}${row}:${colLetter(dataStartCol + geoCount - 1)}${row}`;
+    setFormula(ws, row, totalCol, `SUM(${sumRange})`, NUM2);
+    row++;
+  }
+  const hoGroupEnd = row - 1;
+
+  // Group and collapse homeowner rows
+  for (let r = hoGroupStart; r <= hoGroupEnd; r++) {
+    ws.getRow(r).outlineLevel = 1;
+    ws.getRow(r).hidden = true;
+  }
+  ws.properties.outlineLevelRow = 1;
+
+  // Column widths
+  ws.getColumn(1).width = 24;
+  for (let c = dataStartCol; c <= totalCol; c++) ws.getColumn(c).width = 18;
+
+  // Freeze column A + header rows
+  ws.views = [{ state: 'frozen', xSplit: 1, ySplit: 6 }];
+
+  addLogo(wb, ws);
+  return ws;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // MAIN EXPORT
 // ══════════════════════════════════════════════════════════════════════════
 
 export async function generateFormulaExcel(data: ProformaData): Promise<Buffer> {
-  const { fund, result } = data;
+  const { fund, result, geoBreakdown } = data;
+  const isMultiGeo = geoBreakdown && geoBreakdown.length > 1;
 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Homium Explore';
   wb.created = new Date();
   wb.calcProperties = { fullCalcOnLoad: true };
 
-  // Scenarios overview
-  buildScenariosSheet(wb, fund, result);
+  // Scenarios overview (always)
+  buildScenariosSheet(wb, fund, result, geoBreakdown);
 
-  // Ensure 3 scenarios
-  const scenarioResults = result.scenarioResults.slice(0, 3);
-  while (scenarioResults.length < 3) {
-    scenarioResults.push(scenarioResults[scenarioResults.length - 1]);
+  let geoSheetNames: string[] | undefined;
+
+  if (!isMultiGeo) {
+    // Single-geo: LO/MID/HI formula sheets + formula-based Blended (existing behavior)
+    const scenarioResults = result.scenarioResults.slice(0, 3);
+    while (scenarioResults.length < 3) {
+      scenarioResults.push(scenarioResults[scenarioResults.length - 1]);
+    }
+
+    const sheetNames = ['LO', 'MID', 'HI'];
+    for (let i = 0; i < 3; i++) {
+      buildFormulaModelSheet(wb, sheetNames[i], fund, scenarioResults[i]);
+    }
+
+    buildFormulaBlendedSheet(wb, fund, result.blended, sheetNames);
+  } else {
+    // Multi-geo: per-geo formula sheets + aggregate Blended with cross-sheet SUMs
+    geoSheetNames = [];
+    for (const gb of geoBreakdown) {
+      const name = buildGeoFormulaSheet(wb, fund, gb, geoSheetNames);
+      geoSheetNames.push(name);
+    }
+
+    buildFormulaBlendedSheet(wb, fund, result.blended, geoSheetNames, true);
   }
 
-  // LO, MID, HI — formula-based model sheets
-  const sheetNames = ['LO', 'MID', 'HI'];
-  for (let i = 0; i < 3; i++) {
-    buildFormulaModelSheet(wb, sheetNames[i], fund, scenarioResults[i]);
-  }
-
-  // Blended — cross-sheet formula references
-  buildFormulaBlendedSheet(wb, fund, result.blended, sheetNames);
-
-  // Charts and Share Conversion (values)
+  // Charts and Share Conversion (always)
   buildChartsSheet(wb, result.blended);
   buildShareConversionSheet(wb, fund);
+
+  // Multi-geo: Geo Summary with cross-sheet refs
+  if (isMultiGeo && geoSheetNames) {
+    buildGeoSummarySheet(wb, fund, geoBreakdown, geoSheetNames);
+  }
 
   const arrayBuffer = await wb.xlsx.writeBuffer();
   return Buffer.from(arrayBuffer as ArrayBuffer);

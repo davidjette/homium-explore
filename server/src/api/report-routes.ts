@@ -70,6 +70,7 @@ function buildProformaData(fundInput: any, programName?: string): ProformaData {
     programName: programName || fund.name,
     geoLabel,
     topOff,
+    geoBreakdown: result.geoBreakdown,
   };
 }
 
