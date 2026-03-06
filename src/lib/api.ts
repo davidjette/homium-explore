@@ -139,12 +139,12 @@ export async function downloadProformaPDF(fund: FundConfig, programName?: string
 
 // ── Pro Forma Excel ──
 
-export async function downloadProformaExcel(fund: FundConfig, programName?: string): Promise<void> {
+export async function downloadProformaExcel(fund: FundConfig, programName?: string, useFormulas?: boolean): Promise<void> {
   const url = `${API_BASE}/v2/funds/report/xlsx`;
   const resp = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fund, programName }),
+    body: JSON.stringify({ fund, programName, useFormulas }),
   });
 
   if (!resp.ok) {

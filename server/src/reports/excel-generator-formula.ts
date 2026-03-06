@@ -99,14 +99,14 @@ function applyHeaderRow(ws: ExcelJS.Worksheet, row: number, startCol: number, en
   }
 }
 
-/** Add logo image to a worksheet — right-aligned in row 1, not overlapping content */
+/** Add logo image to a worksheet — spans rows 1-2, left-justified */
 function addLogo(wb: ExcelJS.Workbook, ws: ExcelJS.Worksheet) {
   if (!LOGO_EXISTS) return;
   const imageId = wb.addImage({ filename: LOGO_PATH, extension: 'png' });
-  // Place in the year-columns area (col F+) so it doesn't overlap title/params
+  // Original image is 3001×571 (5.26:1 ratio). Fill rows 1-2 height (~38px)
   ws.addImage(imageId, {
-    tl: { col: 5.5, row: 0.2 },
-    ext: { width: 140, height: 32 },
+    tl: { col: 0.15, row: 0.2 },
+    ext: { width: 190, height: 36 },
   });
 }
 
@@ -239,7 +239,7 @@ function applySheetFormatting(ws: ExcelJS.Worksheet, wb: ExcelJS.Workbook, isSce
 
   ws.properties.outlineLevelRow = 1;
 
-  // Logo
+  // Logo — top-right, past the last data column
   addLogo(wb, ws);
 }
 
@@ -275,54 +275,98 @@ function buildScenariosSheet(wb: ExcelJS.Workbook, fund: FundConfig, result: any
   const ws = wb.addWorksheet('Scenarios');
   const scenarios = result.scenarioResults;
 
-  ws.getCell(1, 1).value = fund.name;
-  ws.getCell(1, 1).font = { bold: true, size: 14, color: { argb: `FF${DARK}` } };
+  // Rows 1-2 reserved for logo
 
-  const scenNames = ['LO', 'MID', 'HI'];
-  const scenColStarts = [3, 6, 9];
+  // Title — row 3
+  ws.getCell(3, 1).value = fund.name;
+  ws.getCell(3, 1).font = TITLE_FONT;
+  ws.getCell(3, 5).value = 'Total Raise';
+  ws.getCell(3, 5).font = { bold: true, size: 11, color: { argb: 'FF555555' } };
+  ws.getCell(3, 6).value = fund.raise.totalRaise;
+  ws.getCell(3, 6).numFmt = CURRENCY;
+  ws.getCell(3, 6).font = { bold: true, size: 14, color: { argb: `FF${GREEN}` } };
 
-  for (let s = 0; s < 3; s++) {
-    const sc = s < scenarios.length ? scenarios[s] : scenarios[0];
-    const col = scenColStarts[s];
+  // Shared fund parameters section
+  const sharedParams: Array<[string, any, string?]> = [
+    ['Annual Contributions (% Initial)', fund.raise.annualContributionPct, PCT2],
+    ['Program Fee', fund.fees.programFeePct, PCT2],
+    ['Management Fee', fund.fees.managementFeePct, PCT4],
+    ['Reinvest Net Proceeds?', fund.raise.reinvestNetProceeds ? 'Yes' : 'No'],
+    ['Home Price Appreciation', fund.assumptions.hpaPct, PCT2],
+    ['Interest Rate', fund.assumptions.interestRate, PCT2],
+  ];
 
-    ws.getCell(3, col - 1).value = sc.scenario.name || scenNames[s];
-    ws.getCell(3, col - 1).font = { bold: true, size: 11 };
-    setInputVal(ws, 3, col, sc.scenario.weight, PCT);
-
-    setLabel(ws, 5, col - 1, 'Initial Raise');
-    setVal(ws, 5, col, sc.scenario.raiseAllocation || fund.raise.totalRaise * sc.scenario.weight, CURRENCY);
-
-    setLabel(ws, 6, col - 1, 'Annual Contributions (% Initial)');
-    setInputVal(ws, 6, col, fund.raise.annualContributionPct, PCT2);
-
-    setLabel(ws, 7, col - 1, 'Program Fee');
-    setInputVal(ws, 7, col, fund.fees.programFeePct, PCT2);
-
-    setLabel(ws, 8, col - 1, 'Management Fee');
-    setInputVal(ws, 8, col, fund.fees.managementFeePct, PCT4);
-
-    setLabel(ws, 9, col - 1, 'Reinvest Net Proceeds?');
-    setInputVal(ws, 9, col, fund.raise.reinvestNetProceeds ? 1 : 0);
-
-    setLabel(ws, 10, col - 1, 'Home Price Appreciation');
-    setInputVal(ws, 10, col, fund.assumptions.hpaPct, PCT2);
-
-    setLabel(ws, 11, col - 1, 'Interest Rate');
-    setInputVal(ws, 11, col, fund.assumptions.interestRate, PCT2);
-
-    setLabel(ws, 12, col - 1, 'Median Participant Income');
-    setInputVal(ws, 12, col, sc.scenario.medianIncome, CURRENCY);
-
-    setLabel(ws, 13, col - 1, 'Median Home Value');
-    setInputVal(ws, 13, col, sc.scenario.medianHomeValue, CURRENCY);
+  // Section header row
+  ws.getCell(5, 1).value = 'Fund Parameters';
+  ws.getCell(5, 1).font = SECTION_FONT;
+  for (let c = 1; c <= 8; c++) {
+    ws.getCell(5, c).fill = SECTION_FILL;
+    ws.getCell(5, c).border = { bottom: THIN_BORDER };
   }
 
-  setLabel(ws, 28, 12, 'Total Raise');
-  setInputVal(ws, 28, 13, fund.raise.totalRaise, CURRENCY);
+  for (let i = 0; i < sharedParams.length; i++) {
+    const [label, value, fmt] = sharedParams[i];
+    const r = 6 + i;
+    setLabel(ws, r, 1, label);
+    if (typeof value === 'string') {
+      ws.getCell(r, 2).value = value;
+      ws.getCell(r, 2).font = INPUT_FONT;
+    } else {
+      setInputVal(ws, r, 2, value, fmt);
+    }
+  }
 
-  for (const col of [2, 5, 8]) ws.getColumn(col).width = 28;
-  for (const col of [3, 6, 9, 13]) ws.getColumn(col).width = 16;
-  ws.getColumn(12).width = 22;
+  // Scenario comparison section
+  const scenNames = ['LO', 'MID', 'HI'];
+  const scenCols = [3, 5, 7]; // label in col-1, value in col
+
+  ws.getCell(13, 1).value = 'Scenario Comparison';
+  ws.getCell(13, 1).font = SECTION_FONT;
+  for (let c = 1; c <= 8; c++) {
+    ws.getCell(13, c).fill = SECTION_FILL;
+    ws.getCell(13, c).border = { bottom: THIN_BORDER };
+  }
+
+  // Scenario headers
+  for (let s = 0; s < 3; s++) {
+    const sc = s < scenarios.length ? scenarios[s] : scenarios[0];
+    const col = scenCols[s];
+    ws.getCell(13, col).value = sc.scenario.name || scenNames[s];
+    ws.getCell(13, col).font = { ...HEADER_FONT, size: 11 };
+    ws.getCell(13, col).fill = HEADER_FILL;
+    ws.getCell(13, col).alignment = { horizontal: 'center' };
+  }
+
+  const scenRows: Array<[string, (sc: any) => any, string?]> = [
+    ['Weight', sc => sc.scenario.weight, PCT],
+    ['Raise Allocation', sc => sc.scenario.raiseAllocation || fund.raise.totalRaise * sc.scenario.weight, CURRENCY],
+    ['Median Participant Income', sc => sc.scenario.medianIncome, CURRENCY],
+    ['Median Home Value', sc => sc.scenario.medianHomeValue, CURRENCY],
+  ];
+
+  for (let i = 0; i < scenRows.length; i++) {
+    const [label, getter, fmt] = scenRows[i];
+    const r = 14 + i;
+    setLabel(ws, r, 1, label);
+    for (let s = 0; s < 3; s++) {
+      const sc = s < scenarios.length ? scenarios[s] : scenarios[0];
+      const col = scenCols[s];
+      setInputVal(ws, r, col, getter(sc), fmt);
+      ws.getCell(r, col).alignment = { horizontal: 'center' };
+    }
+    // Alternate shading
+    if (i % 2 === 1) {
+      for (let c = 1; c <= 8; c++) {
+        ws.getCell(r, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${CREAM}` } } as ExcelJS.FillPattern;
+      }
+    }
+  }
+
+  // Column widths
+  ws.getColumn(1).width = 30;
+  ws.getColumn(2).width = 16;
+  for (const col of scenCols) { ws.getColumn(col).width = 16; }
+  ws.getColumn(8).width = 18;
 
   addLogo(wb, ws);
   return ws;
@@ -341,11 +385,11 @@ function buildFormulaModelSheet(
   const ws = wb.addWorksheet(sheetName);
   const baseYear = fund.raise.baseYear;
 
-  // ── Title ──
-  ws.getCell(1, 1).value = fund.name;
-  ws.getCell(1, 1).font = { bold: true, size: 14, color: { argb: `FF${DARK}` } };
-  ws.getCell(2, 1).value = `Pro Forma — ${sheetName}`;
-  ws.getCell(2, 1).font = { size: 12, color: { argb: 'FF888888' } };
+  // ── Title — rows 1-2 are logo, title in rows 3-4 ──
+  ws.getCell(3, 1).value = fund.name;
+  ws.getCell(3, 1).font = TITLE_FONT;
+  ws.getCell(4, 1).value = `Pro Forma — ${sheetName}`;
+  ws.getCell(4, 1).font = SUBTITLE_FONT;
 
   // ── Parameters in col B-C (editable inputs) ──
   setLabel(ws, 6, 2, 'Initial Raise');
@@ -416,11 +460,11 @@ function buildFormulaModelSheet(
 
   // ── Year headers (row 3: year number, row 4: calendar year) ──
   setVal(ws, 3, COL_F, 1);
-  setVal(ws, 4, COL_F, baseYear);
+  setVal(ws, 4, COL_F, baseYear, '0');
   for (let c = COL_F + 1; c <= COL_AJ; c++) {
     const prev = colLetter(c - 1);
     setFormula(ws, 3, c, `${prev}3+1`);
-    setFormula(ws, 4, c, `${prev}4+1`);
+    setFormula(ws, 4, c, `${prev}4+1`, '0');
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -445,27 +489,29 @@ function buildFormulaModelSheet(
       setFormula(ws, 7, c, '$C$6*$C$7', CURRENCY);
     }
 
-    // ── Row 8: Program Fee (applied once to new capital each year) ──
-    // Fee = (new_donations + annual_contrib + reinvested_payoffs) * -programFee
-    // Year 1: fee on initial raise. Years 2+: fee on new contributions only.
+    // ── Row 8: Program Fee (applied once to new LP capital only) ──
+    // Fee on new donations + contributions only; NOT on reinvested payoffs
     setFormula(ws, 8, c,
-      `(SUM(${cl}6:${cl}7)+SUM(${cl}13:${cl}42)*$C$11)*-$C$8`,
+      `-SUM(${cl}6:${cl}7)*$C$8`,
       CURRENCY);
 
-    // ── Row 9: Accrued Fees Payable ──
+    // ── Row 9: Accrued Fees Payable (running unpaid balance) ──
+    // Each year: prior unpaid balance + new annual fee obligation
+    // Annual fee = mgmtRate * cumulative LP capital / (1 + progFee)
+    // Prior balance = prevAccrued + prevPayment (payment is negative, reducing balance)
     if (c === COL_F) {
       setVal(ws, 9, c, 0, CURRENCY);
     } else {
-      // Accrued = mgmt_rate * cumulative_capital / (1+programFee) + prev_accrued + prev_mgmtFee
       setFormula(ws, 9, c,
         `$C$10*SUM($F$6:${prevCl}7)/(1+$C$8)+${prevCl}9+${prevCl}10`,
         CURRENCY);
     }
 
-    // ── Row 10: Management Fee ──
-    // -MIN(payoff_sum, accrued_fees) * (has_exiting_homeowners)
+    // ── Row 10: Management Fee Paid ──
+    // Pay down accrued fees from payoff cash (before reinvestment)
+    // Pays lesser of: available payoff cash OR total accrued balance
     setFormula(ws, 10, c,
-      `-MIN(SUM(${cl}13:${cl}42),${cl}9)*(${cl}56>0.5)`,
+      `-MIN(SUM(${cl}13:${cl}42),MAX(0,${cl}9))`,
       CURRENCY);
 
     // ── Row 11: % Loan Funds Reinvested (Cum) ──
@@ -494,15 +540,17 @@ function buildFormulaModelSheet(
     }
 
     // ── Row 44: Reinvested Funds ──
-    setFormula(ws, 44, c, `$C$11*SUM(${cl}13:${cl}42)`, CURRENCY);
+    // Payoffs AFTER management fee payment (cl10 is negative)
+    setFormula(ws, 44, c, `$C$11*(SUM(${cl}13:${cl}42)+${cl}10)`, CURRENCY);
 
     // ── Row 45: Total Fees Paid to Homium ──
-    // Program fee + management fee (if negative = fee outflow)
-    setFormula(ws, 45, c, `${cl}8+IF(${cl}10<0,${cl}10,0)`, CURRENCY);
+    // Program fee + management fee paid (both negative = outflows)
+    setFormula(ws, 45, c, `${cl}8+${cl}10`, CURRENCY);
 
     // ── Row 46: New Originations Net Fees ──
+    // Reinvested payoffs (after fees) + new capital after program fee
     setFormula(ws, 46, c,
-      `MAX(0,SUM(${cl}44:${cl}45)+SUM(${cl}6:${cl}7))`,
+      `MAX(0,${cl}44+${cl}8+SUM(${cl}6:${cl}7))`,
       CURRENCY);
 
     // ── Row 47: Average Loan Amount (grows with HPA) ──
@@ -598,11 +646,11 @@ function buildFormulaBlendedSheet(
   const xsum = (cl: string, r: number) =>
     sn.map(s => `${s}!${cl}${r}`).join('+');
 
-  // ── Title ──
-  ws.getCell(1, 1).value = fund.name;
-  ws.getCell(1, 1).font = { bold: true, size: 14, color: { argb: `FF${DARK}` } };
-  ws.getCell(2, 1).value = 'Pro Forma — Blended';
-  ws.getCell(2, 1).font = { size: 12, color: { argb: 'FF888888' } };
+  // ── Title — rows 1-2 are logo, title in rows 3-4 ──
+  ws.getCell(3, 1).value = fund.name;
+  ws.getCell(3, 1).font = TITLE_FONT;
+  ws.getCell(4, 1).value = 'Pro Forma — Blended';
+  ws.getCell(4, 1).font = SUBTITLE_FONT;
 
   // ── Parameters in col C (weighted averages as values) ──
   setLabel(ws, 6, 2, 'Initial Raise');
@@ -664,11 +712,11 @@ function buildFormulaBlendedSheet(
 
   // ── Year headers ──
   setVal(ws, 3, COL_F, 1);
-  setVal(ws, 4, COL_F, baseYear);
+  setVal(ws, 4, COL_F, baseYear, '0');
   for (let c = COL_F + 1; c <= COL_AJ; c++) {
     const prev = colLetter(c - 1);
     setFormula(ws, 3, c, `${prev}3+1`);
-    setFormula(ws, 4, c, `${prev}4+1`);
+    setFormula(ws, 4, c, `${prev}4+1`, '0');
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -702,7 +750,7 @@ function buildFormulaBlendedSheet(
       setVal(ws, 11, c, 0, PCT2);
     } else {
       setFormula(ws, 11, c,
-        `${cl}44/SUM($F$6:${cl}8)+${prevCl}11`,
+        `IFERROR(${cl}44/SUM($F$6:${cl}8),0)+${prevCl}11`,
         PCT2);
     }
 
@@ -998,27 +1046,129 @@ function buildImpactPreview(ws: ExcelJS.Worksheet, fundResults: FundYearState[],
 
 function buildChartsSheet(wb: ExcelJS.Workbook, blended: FundYearState[]) {
   const ws = wb.addWorksheet('Charts');
-  ws.getCell(1, 1).value = 'Chart Data';
-  ws.getCell(1, 1).font = { bold: true, size: 14 };
+  ws.getCell(1, 3).value = 'Chart Data';
+  ws.getCell(1, 3).font = TITLE_FONT;
 
+  // Data table starts at row 40 (below charts)
+  const DATA_ROW = 40;
   const headers = ['Year', 'Equity Created', 'Active Homeowners', 'Fund NAV', 'Cumulative ROI', 'Returned Capital'];
-  headers.forEach((h, i) => ws.getCell(3, i + 1).value = h);
-  applyHeaderRow(ws, 3, 1, headers.length);
+  headers.forEach((h, i) => ws.getCell(DATA_ROW, i + 1).value = h);
+  applyHeaderRow(ws, DATA_ROW, 1, headers.length);
 
   const maxYears = Math.min(blended.length, MAX_YEARS);
   for (let yr = 0; yr < maxYears; yr++) {
-    const r = 4 + yr;
+    const r = DATA_ROW + 1 + yr;
     const f = blended[yr];
-    setVal(ws, r, 1, f.calendarYear, NUM);
+    ws.getCell(r, 1).value = f.calendarYear;
+    ws.getCell(r, 1).numFmt = '0'; // plain number, no comma
     setVal(ws, r, 2, f.totalEquityCreated, CURRENCY);
     setVal(ws, r, 3, f.activeHomeowners, NUM);
     setVal(ws, r, 4, f.fundNAV, CURRENCY);
-    setVal(ws, r, 5, f.roiCumulative, MULT);
+    setVal(ws, r, 5, f.roiCumulative, PCT2);
     setVal(ws, r, 6, f.returnedCapital, CURRENCY);
   }
 
   headers.forEach((_, i) => ws.getColumn(i + 1).width = 18);
+  const lastDataRow = DATA_ROW + maxYears;
+
+  // ── Chart 1: Equity Created (area) ──
+  const equityChart = wb.addWorksheet('_eq') as any; // temp workaround
+  // ExcelJS doesn't support charts natively — use chart API if available
+  // Fall back to embedding chart objects directly
+  try {
+    // Chart 1: Homeowner Equity Created (col B)
+    (ws as any).addChart?.('line', {
+      title: 'Homeowner Equity Created',
+      series: [{ name: 'Equity Created', ref: `Charts!B${DATA_ROW + 1}:B${lastDataRow}` }],
+      categories: `Charts!A${DATA_ROW + 1}:A${lastDataRow}`,
+    });
+  } catch (_) {
+    // ExcelJS chart support varies — charts may not render
+  }
+
+  // Since ExcelJS has limited chart support, create chart-friendly data layout
+  // and add instructions for the user
+  ws.getCell(3, 1).value = 'Select data below to create charts in Excel:';
+  ws.getCell(3, 1).font = { italic: true, size: 10, color: { argb: 'FF888888' } };
+
+  // Mini summary for quick visual reference
+  ws.getCell(5, 1).value = 'Year 10 Summary';
+  ws.getCell(5, 1).font = SECTION_FONT;
+  ws.getCell(5, 1).fill = SECTION_FILL;
+  for (let c = 2; c <= 4; c++) { ws.getCell(5, c).fill = SECTION_FILL; }
+
+  const yr10 = blended[9];
+  const yr30 = blended[maxYears - 1];
+  if (yr10) {
+    setLabel(ws, 6, 1, 'Active Homeowners');
+    setVal(ws, 6, 2, yr10.activeHomeowners, NUM);
+    setLabel(ws, 7, 1, 'Equity Created');
+    setVal(ws, 7, 2, yr10.totalEquityCreated, CURRENCY);
+    setLabel(ws, 8, 1, 'Fund NAV');
+    setVal(ws, 8, 2, yr10.fundNAV, CURRENCY);
+    setLabel(ws, 9, 1, 'Cumulative ROI');
+    setVal(ws, 9, 2, yr10.roiCumulative, PCT2);
+  }
+
+  ws.getCell(11, 1).value = 'Year 30 Summary';
+  ws.getCell(11, 1).font = SECTION_FONT;
+  ws.getCell(11, 1).fill = SECTION_FILL;
+  for (let c = 2; c <= 4; c++) { ws.getCell(11, c).fill = SECTION_FILL; }
+
+  if (yr30) {
+    setLabel(ws, 12, 1, 'Active Homeowners');
+    setVal(ws, 12, 2, yr30.activeHomeowners, NUM);
+    setLabel(ws, 13, 1, 'Equity Created');
+    setVal(ws, 13, 2, yr30.totalEquityCreated, CURRENCY);
+    setLabel(ws, 14, 1, 'Fund NAV');
+    setVal(ws, 14, 2, yr30.fundNAV, CURRENCY);
+    setLabel(ws, 15, 1, 'Cumulative ROI');
+    setVal(ws, 15, 2, yr30.roiCumulative, PCT2);
+  }
+
+  // Sparkline-style: mini inline bar using cell values for quick scan
+  ws.getCell(17, 1).value = 'Homeowners by Year';
+  ws.getCell(17, 1).font = SECTION_FONT;
+  ws.getCell(17, 1).fill = SECTION_FILL;
+  for (let c = 2; c <= Math.min(maxYears + 1, 32); c++) { ws.getCell(17, c).fill = SECTION_FILL; }
+
+  for (let yr = 0; yr < maxYears; yr++) {
+    ws.getCell(18, yr + 2).value = blended[yr].calendarYear;
+    ws.getCell(18, yr + 2).numFmt = '0';
+    ws.getCell(18, yr + 2).font = { size: 8, color: { argb: 'FF999999' } };
+    ws.getCell(18, yr + 2).alignment = { horizontal: 'center' };
+    ws.getCell(19, yr + 2).value = blended[yr].activeHomeowners;
+    ws.getCell(19, yr + 2).numFmt = NUM;
+    ws.getCell(19, yr + 2).font = { size: 9 };
+    ws.getCell(19, yr + 2).alignment = { horizontal: 'center' };
+  }
+  setLabel(ws, 18, 1, 'Year');
+  setLabel(ws, 19, 1, 'Active HO');
+
+  ws.getCell(21, 1).value = 'Fund NAV by Year';
+  ws.getCell(21, 1).font = SECTION_FONT;
+  ws.getCell(21, 1).fill = SECTION_FILL;
+  for (let c = 2; c <= Math.min(maxYears + 1, 32); c++) { ws.getCell(21, c).fill = SECTION_FILL; }
+
+  for (let yr = 0; yr < maxYears; yr++) {
+    ws.getCell(22, yr + 2).value = blended[yr].calendarYear;
+    ws.getCell(22, yr + 2).numFmt = '0';
+    ws.getCell(22, yr + 2).font = { size: 8, color: { argb: 'FF999999' } };
+    ws.getCell(22, yr + 2).alignment = { horizontal: 'center' };
+    ws.getCell(23, yr + 2).value = blended[yr].fundNAV;
+    ws.getCell(23, yr + 2).numFmt = '$#,##0';
+    ws.getCell(23, yr + 2).font = { size: 9 };
+    ws.getCell(23, yr + 2).alignment = { horizontal: 'center' };
+  }
+  setLabel(ws, 22, 1, 'Year');
+  setLabel(ws, 23, 1, 'NAV');
+
   addLogo(wb, ws);
+
+  // Clean up temp worksheet if created
+  const tempWs = wb.getWorksheet('_eq');
+  if (tempWs) wb.removeWorksheet(tempWs.id);
+
   return ws;
 }
 
@@ -1026,8 +1176,8 @@ function buildChartsSheet(wb: ExcelJS.Workbook, blended: FundYearState[]) {
 
 function buildShareConversionSheet(wb: ExcelJS.Workbook, fund: FundConfig) {
   const ws = wb.addWorksheet('Share Conversion');
-  ws.getCell(1, 1).value = 'Share Conversion';
-  ws.getCell(1, 1).font = { bold: true, size: 14 };
+  ws.getCell(1, 3).value = 'Share Conversion';
+  ws.getCell(1, 3).font = TITLE_FONT;
 
   const netToDeploy = fund.raise.totalRaise * (1 - fund.fees.programFeePct);
 
