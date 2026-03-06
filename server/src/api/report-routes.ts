@@ -15,6 +15,7 @@ import { generateProformaHTML, ProformaData } from '../reports/proforma-report';
 import { htmlToPdfBuffer } from '../reports/pdf-generator';
 import { sendProFormaEmail } from '../reports/email-service';
 import { generateProformaExcel } from '../reports/excel-generator';
+import { generateFormulaExcel } from '../reports/excel-generator-formula';
 
 const router = Router();
 
@@ -55,8 +56,10 @@ function buildProformaData(fundInput: any, programName?: string): ProformaData {
     || 'Target Geography';
 
   // Top-off calculation if wage growth is specified
-  const topOff = fund.assumptions.wageGrowthPct != null
-    ? calculateTopOffSchedule(fund, fund.assumptions.wageGrowthPct, fund.program.fixedHomeCount || 0)
+  // Use fixedHomeCount if set, otherwise fall back to totalHomeowners from the model
+  const homeCount = fund.program.fixedHomeCount || result.totalHomeowners;
+  const topOff = (fund.assumptions.wageGrowthPct != null && homeCount)
+    ? calculateTopOffSchedule(fund, fund.assumptions.wageGrowthPct, homeCount)
     : undefined;
 
   return {
@@ -161,14 +164,16 @@ router.post('/report/pdf', async (req, res) => {
 
 // POST /report/xlsx — Generate + download pro forma Excel
 router.post('/report/xlsx', async (req, res) => {
-  const { fund, programName } = req.body;
+  const { fund, programName, useFormulas } = req.body;
   if (!fund) {
     return res.status(400).json({ success: false, error: 'fund configuration required' });
   }
 
   try {
     const data = buildProformaData(fund, programName);
-    const buffer = await generateProformaExcel(data);
+    const buffer = useFormulas
+      ? await generateFormulaExcel(data)
+      : await generateProformaExcel(data);
     const filename = `${data.programName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '-')}-Pro-Forma.xlsx`;
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

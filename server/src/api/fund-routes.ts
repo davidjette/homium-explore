@@ -93,10 +93,12 @@ router.post('/run', (req: Request, res: Response) => {
     const start = Date.now();
     const result = runFundModel(fund);
 
-    // Calculate top-off schedule when fixedHomeCount and wageGrowthPct are present
+    // Calculate top-off schedule when wageGrowthPct is present
+    // Use fixedHomeCount if set, otherwise fall back to totalHomeowners from the model
     let topOffSchedule;
-    if (fund.assumptions.wageGrowthPct != null && fund.program.fixedHomeCount) {
-      topOffSchedule = calculateTopOffSchedule(fund, fund.assumptions.wageGrowthPct, fund.program.fixedHomeCount);
+    const homeCount = fund.program.fixedHomeCount || result.totalHomeowners;
+    if (fund.assumptions.wageGrowthPct != null && homeCount) {
+      topOffSchedule = calculateTopOffSchedule(fund, fund.assumptions.wageGrowthPct, homeCount);
     }
 
     res.json(ok({
