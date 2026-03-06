@@ -152,7 +152,7 @@ export default function AffordabilityTool() {
   }, [selectedState, navigate])
 
   return (
-    <section id="affordability" className="bg-sectionAlt py-[72px] relative overflow-hidden">
+    <section id="affordability" className="bg-white py-[120px] max-md:py-[80px] relative overflow-hidden">
       {/* DGA-style faint map outline background — fades out when state selected */}
       <div
         className="absolute inset-0 pointer-events-none transition-opacity duration-500"
@@ -161,15 +161,15 @@ export default function AffordabilityTool() {
         <img
           src={MAP_BG_URL}
           alt=""
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[82%] max-w-[800px] opacity-[0.18]"
-          style={{ filter: 'saturate(0) brightness(0.85)' }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[900px] opacity-[0.25]"
+          style={{ filter: 'saturate(0) brightness(0.6)' }}
         />
       </div>
 
       <Container>
         {/* Section Header */}
-        <div className="text-center mb-3 relative z-10 pt-9">
-          <Label className="text-green block mb-3">Interactive Analysis</Label>
+        <div className="text-center mb-8 relative z-10 pt-4">
+          <span className="font-body font-bold text-green text-[11px] uppercase tracking-[2.5px] block mb-3">Interactive Analysis</span>
           <H2>State Affordability Gap Analysis</H2>
           <Body className="mt-4 max-w-2xl mx-auto">
             Select a state to see the affordability challenge facing Homium's target borrowers —
@@ -178,7 +178,7 @@ export default function AffordabilityTool() {
         </div>
 
         {/* State Selector */}
-        <div className="max-w-md mx-auto mb-3 relative z-10">
+        <div className="max-w-md mx-auto mb-8 relative z-10">
           <Select
             value={selectedState}
             onChange={(e) => handleStateSelect(e.target.value)}
@@ -194,7 +194,7 @@ export default function AffordabilityTool() {
         <div className="relative z-10">
           {/* Placeholder when no state */}
           {!selectedState && (
-            <p className="text-center font-body font-light text-lightGray italic py-6">
+            <p className="text-center font-body font-light text-lightGray italic py-12">
               Select a state above to view affordability data.
             </p>
           )}

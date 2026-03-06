@@ -1,21 +1,41 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { Button } from './Button';
+import LeadCaptureModal from '../components/shared/LeadCaptureModal';
+import { useLeadCapture } from '../hooks/useLeadCapture';
 
-/** Landing page nav — section anchors + tool link */
+/** Landing page nav — section anchors + tool link + sponsor CTA */
 export function LandingNav() {
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const { submitLead } = useLeadCapture();
+
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border">
-      <div className="max-w-[1100px] mx-auto px-7 flex items-center justify-between h-16">
-        <Link to="/" className="flex items-center">
-          <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-7" />
-        </Link>
-        <div className="hidden sm:flex items-center gap-8">
-          <AnchorLink href="#affordability">Affordability Tool</AnchorLink>
-          <AnchorLink href="#programs">Programs</AnchorLink>
-          <AnchorLink href="#news">News</AnchorLink>
+    <>
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border">
+        <div className="max-w-[1100px] mx-auto px-7 flex items-center justify-between h-16">
+          <Link to="/" className="flex items-center">
+            <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-7" />
+          </Link>
+          <div className="hidden sm:flex items-center gap-8">
+            <AnchorLink href="#programs">Programs</AnchorLink>
+            <AnchorLink href="#news">News</AnchorLink>
+            <AnchorLink href="#affordability">Affordability Tool</AnchorLink>
+            <Button size="sm" onClick={() => setShowLeadModal(true)}>
+              Sponsor a Program
+            </Button>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+      {showLeadModal && (
+        <LeadCaptureModal
+          onClose={() => setShowLeadModal(false)}
+          onSubmit={async (info) => {
+            await submitLead(info);
+            setShowLeadModal(false);
+          }}
+        />
+      )}
+    </>
   );
 }
 

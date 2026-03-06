@@ -17,19 +17,19 @@ export default function Hero() {
       <div className="absolute inset-0 bg-white/[0.72]" />
 
       <Container className="relative z-10">
-        <div className="max-w-3xl">
-          <Label className="text-green mb-4 block">
+        <div className="max-w-3xl mx-auto text-center">
+          <span className="font-body font-bold text-green text-[11px] uppercase tracking-[2.5px] mb-4 block">
             Shared Appreciation Down Payment Assistance
-          </Label>
+          </span>
           <h1 className="font-heading font-normal text-dark text-[50px] leading-[1.12] max-md:text-[32px]">
-            Close the Affordability Gap<br className="max-md:hidden" /> in Your Community
+            The End-to-End Down Payment<br className="max-md:hidden" /> Assistance Program Solution for<br className="max-md:hidden" /> Affordable Homeownership
           </h1>
-          <Body className="mt-6 text-lg max-w-2xl text-gray">
-            Homium partners with HFAs, governments, municipalities, universities, and nonprofits
-            to build shared appreciation homeownership programs that create sustainable pathways
-            to homeownership for working families.
+          <Body className="mt-6 text-lg max-w-2xl mx-auto text-gray">
+            A showcase of the transformative impact Homium creates through its programs like the
+            Tobias Harris Homeownership Initiative and Utah Dream Fund, and how you can design
+            a program to create a pathway to homeownership for working families in your community.
           </Body>
-          <div className="flex flex-wrap items-center gap-4 mt-10">
+          <div className="flex flex-wrap items-center justify-center gap-4 mt-10">
             <a href="#affordability">
               <Button size="lg">
                 Explore Your Market

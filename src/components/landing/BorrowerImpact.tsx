@@ -50,47 +50,55 @@ const STORIES = [
   },
 ]
 
+const THHI_STORIES = STORIES.filter(s => s.tag === 'THHI Detroit')
+const UDF_STORIES = STORIES.filter(s => s.tag === 'Utah Dream Fund')
+
 export default function BorrowerImpact() {
   return (
     <section className="bg-sectionAlt py-[88px]">
       <Container>
-        <div className="mb-10">
-          <Label className="text-green block mb-3">Borrower Impact</Label>
+        <div className="mb-12">
+          <span className="font-body font-bold text-green text-[11px] uppercase tracking-[2.5px] block mb-3">Borrower Impact</span>
           <H2>Key Impact Loan Data</H2>
         </div>
 
-        {/* Metrics columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-          <MetricsColumn title="THHI Program Metrics" metrics={THHI_METRICS} />
-          <MetricsColumn title="UDF Program Metrics" metrics={UDF_METRICS} />
-        </div>
-
-        {/* Borrower stories */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {STORIES.map((s) => (
-            <div key={s.title} className="bg-white border border-border rounded-lg p-6">
-              <span className="inline-block bg-greenLight text-green font-body font-bold text-[11px] uppercase tracking-[1.5px] px-3 py-1 rounded-full mb-3">
-                {s.tag}
-              </span>
-              <h4 className="font-heading text-dark text-[19px] mb-2">{s.title}</h4>
-              <p className="font-body font-light text-gray text-sm leading-relaxed">{s.text}</p>
-            </div>
-          ))}
+        {/* Two-column layout: metrics + testimonials per program */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+          <ProgramColumn title="THHI Program Metrics" metrics={THHI_METRICS} stories={THHI_STORIES} />
+          <ProgramColumn title="UDF Program Metrics" metrics={UDF_METRICS} stories={UDF_STORIES} />
         </div>
       </Container>
     </section>
   )
 }
 
-function MetricsColumn({ title, metrics }: { title: string; metrics: Array<{ label: string; value: string }> }) {
+function ProgramColumn({ title, metrics, stories }: {
+  title: string;
+  metrics: Array<{ label: string; value: string }>;
+  stories: typeof STORIES;
+}) {
   return (
-    <div className="bg-white border border-border rounded-lg p-6">
-      <h3 className="font-heading text-dark text-[22px] mb-4">{title}</h3>
-      <div className="space-y-0">
+    <div>
+      <h3 className="font-heading text-dark text-[22px] mb-1">{title}</h3>
+      <div className="border-t-2 border-green mb-2" />
+      <div>
         {metrics.map((m) => (
-          <div key={m.label} className="flex justify-between items-baseline py-2.5 border-b border-border/40 last:border-0">
+          <div key={m.label} className="flex justify-between items-baseline py-2.5 border-b border-border/40">
             <span className="font-body font-light text-gray text-sm">{m.label}</span>
             <span className="font-body font-bold text-dark text-sm">{m.value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Testimonials for this program */}
+      <div className="mt-8 space-y-4">
+        {stories.map((s) => (
+          <div key={s.title} className="bg-white border border-border rounded-lg p-6">
+            <span className="inline-block bg-greenLight text-green font-body font-bold text-[11px] uppercase tracking-[1.5px] px-3 py-1 rounded-full mb-3">
+              {s.tag}
+            </span>
+            <h4 className="font-heading text-dark text-[19px] mb-2">{s.title}</h4>
+            <p className="font-body font-light text-gray text-sm leading-relaxed">{s.text}</p>
           </div>
         ))}
       </div>
