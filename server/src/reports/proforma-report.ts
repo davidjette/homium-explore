@@ -361,15 +361,30 @@ function impactPage(data: ProformaData): string {
             ${scenarios.length > 1 ? (() => {
               const geoBreakdown = result.geoBreakdown;
               if (geoBreakdown && geoBreakdown.length > 1) {
-                // Multi-geo: compact summary referencing the geo distribution page
-                const totalHO = geoBreakdown.reduce((s, gb) => s + gb.totalHomeowners, 0);
+                // Multi-geo: show aggregate program impact metrics
+                const totalHO = result.totalHomeowners;
+                const totalWeight = scenarios.reduce((s, sr) => s + sr.scenario.weight, 0) || 1;
+                const wtdIncome = scenarios.reduce((s, sr) => s + sr.scenario.medianIncome * sr.scenario.weight, 0) / totalWeight;
+                const wtdHome = scenarios.reduce((s, sr) => s + sr.scenario.medianHomeValue * sr.scenario.weight, 0) / totalWeight;
+                const wtdSAM = wtdHome * fund.program.homiumSAPct;
+                const wtdDP = wtdHome * fund.program.downPaymentPct;
+                const wtdMortgage = wtdHome - wtdSAM - wtdDP;
+                const yr10 = blended[9];
+                const geoCount = geoBreakdown.length;
                 return `
-                  <h3 class="dr-head" style="margin-top:12px">Geography Summary</h3>
-                  <table class="sc-table"><thead><tr><th>Geography</th><th>Alloc</th><th>HOs</th></tr></thead><tbody>
-                  ${geoBreakdown.map(gb => `<tr><td class="bold">${gb.geo.geoLabel}</td><td>${fmtP(gb.geo.allocationPct, 0)}</td><td>${fmtN(gb.totalHomeowners)}</td></tr>`).join('')}
-                  <tr style="border-top:2px solid ${BORDER}"><td class="bold">Total</td><td></td><td>${fmtN(totalHO)}</td></tr>
+                  <h3 class="dr-head" style="margin-top:12px">Program Impact</h3>
+                  <table class="sc-table"><tbody>
+                    <tr><td>Geographies</td><td class="bold">${fmtN(geoCount)}</td></tr>
+                    <tr><td>Total Homeowners</td><td class="bold">${fmtN(totalHO)}</td></tr>
+                    <tr><td>Wtd Avg Income</td><td class="bold">${fmt(wtdIncome, 0)}</td></tr>
+                    <tr><td>Wtd Avg Home Value</td><td class="bold">${fmt(wtdHome, 0)}</td></tr>
+                    <tr><td>Avg SA Position</td><td class="bold">${fmt(wtdSAM, 0)}</td></tr>
+                    <tr><td>Avg Down Payment</td><td class="bold">${fmt(wtdDP, 0)}</td></tr>
+                    <tr><td>Avg First Mortgage</td><td class="bold">${fmt(wtdMortgage, 0)}</td></tr>
+                    ${yr10 ? `<tr><td>Yr 10 Equity Created</td><td class="bold">${fmtM(yr10.totalEquityCreated)}</td></tr>
+                    <tr><td>Yr 10 ROI</td><td class="bold">${fmtX(yr10.roiCumulative)}</td></tr>` : ''}
                   </tbody></table>
-                  <p style="font-size:11px;color:${GRAY};margin-top:8px;font-style:italic">Full scenario detail by geography on the Geographic Distribution page.</p>`;
+                  <p style="font-size:11px;color:${GRAY};margin-top:8px;font-style:italic">Full detail by geography on the Geographic Distribution page.</p>`;
               }
               return `
                 <h3 class="dr-head" style="margin-top:16px">Scenarios</h3>
