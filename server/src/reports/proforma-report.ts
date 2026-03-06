@@ -520,10 +520,11 @@ function geoDistributionPage(data: ProformaData): string {
           <tbody>${tableRows}</tbody>
         </table>
 
+        ${geoBreakdown.length <= 4 ? `
         <h3 class="dr-head">Scenario Detail by Geography</h3>
-        <div style="display:flex;gap:24px;margin-top:10px;flex:1">
+        <div style="display:flex;gap:24px;margin-top:10px">
           ${scenarioBlocks}
-        </div>
+        </div>` : ''}
 
         <div class="page-num">5</div>
       </div>
