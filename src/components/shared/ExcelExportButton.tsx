@@ -12,14 +12,13 @@ interface Props {
 export default function ExcelExportButton({ fund, programName }: Props) {
   const [exporting, setExporting] = useState(false)
   const [error, setError] = useState('')
-  const [useFormulas, setUseFormulas] = useState(false)
 
   const handleExport = async () => {
     setExporting(true)
     setError('')
     try {
-      await downloadProformaExcel(fund, programName, useFormulas)
-      trackEvent('excel_export', { programName: programName || 'unnamed', mode: useFormulas ? 'formula' : 'values' })
+      await downloadProformaExcel(fund, programName)
+      trackEvent('excel_export', { programName: programName || 'unnamed' })
     } catch (err) {
       console.error('Excel export failed:', err)
       const msg = err instanceof Error ? err.message : String(err)
@@ -39,15 +38,6 @@ export default function ExcelExportButton({ fund, programName }: Props) {
           </svg>
         )}
       </Button>
-      <label className="flex items-center gap-1.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={useFormulas}
-          onChange={e => setUseFormulas(e.target.checked)}
-          className="w-3 h-3 accent-green-700"
-        />
-        <span className="font-body text-[11px] text-gray-500">Live formulas</span>
-      </label>
       {error && (
         <p className="font-body text-xs text-red-600 max-w-[200px] text-center">{error}</p>
       )}

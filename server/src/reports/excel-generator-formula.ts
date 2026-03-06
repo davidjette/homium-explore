@@ -1204,6 +1204,7 @@ export async function generateFormulaExcel(data: ProformaData): Promise<Buffer> 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Homium Explore';
   wb.created = new Date();
+  wb.calcProperties = { fullCalcOnLoad: true };
 
   // Scenarios overview
   buildScenariosSheet(wb, fund, result);
