@@ -10,7 +10,9 @@ import { useLeadCapture } from '../hooks/useLeadCapture'
 import LeadCaptureModal from '../components/shared/LeadCaptureModal'
 import PdfExportButton from '../components/shared/PdfExportButton'
 import ExcelExportButton from '../components/shared/ExcelExportButton'
+import ShareButton from '../components/shared/ShareButton'
 import { trackEvent } from '../lib/analytics'
+import { runFundModel } from '../lib/api'
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -79,7 +81,59 @@ export default function Program() {
   const [stateAbbr, setStateAbbr] = useState('')
   const { isGated, submitLead } = useLeadCapture()
 
+  const [loading, setLoading] = useState(false)
+
   useEffect(() => {
+    // Check for shared link: /program#c=<base64url-encoded fund config>
+    const hash = window.location.hash
+    if (hash.startsWith('#c=')) {
+      const b64 = hash.slice(3).replace(/-/g, '+').replace(/_/g, '/')
+      try {
+        const json = decodeURIComponent(escape(atob(b64)))
+        const fundConfig = JSON.parse(json)
+        const abbr = fundConfig.geography?.state || ''
+        const name = STATE_NAMES[abbr] || fundConfig.geography?.label || abbr
+        setStateAbbr(abbr)
+        setStateName(name)
+        setLoading(true)
+
+        runFundModel(fundConfig).then(result => {
+          setData({
+            fund: result.fund,
+            totalHomeowners: result.totalHomeowners,
+            blendedYr10: result.blended[9] ? {
+              equityCreated: Math.round(result.blended[9].totalEquityCreated),
+              activeHomeowners: result.blended[9].activeHomeowners,
+              roiCumulative: result.blended[9].roiCumulative,
+            } : null,
+            scenarios: result.scenarioResults.map((sr: any) => ({
+              name: sr.scenario.name,
+              homeowners: sr.cohorts?.reduce((s: number, c: any) => s + c.homeownerCount, 0) || 0,
+              medianIncome: sr.scenario.medianIncome,
+              medianHomeValue: sr.scenario.medianHomeValue,
+              affordabilityGap: sr.affordability?.gapAfter || 0,
+            })),
+            housingData: {
+              medianIncome: fundConfig.scenarios?.[1]?.medianIncome || fundConfig.scenarios?.[0]?.medianIncome || 0,
+              medianHomeValue: fundConfig.scenarios?.[1]?.medianHomeValue || fundConfig.scenarios?.[0]?.medianHomeValue || 0,
+            },
+            fullResult: result,
+            geoBreakdown: result.geoBreakdown,
+          })
+          setLoading(false)
+          trackEvent('shared_link_loaded', { state: abbr })
+        }).catch(err => {
+          console.error('Failed to load shared program:', err)
+          setLoading(false)
+          navigate('/')
+        })
+        return
+      } catch (err) {
+        console.error('Invalid share link:', err)
+      }
+    }
+
+    // Default: load from sessionStorage
     const raw = sessionStorage.getItem('programResult')
     const abbr = sessionStorage.getItem('programState') || ''
     const name = sessionStorage.getItem('programStateName') || ''
@@ -92,6 +146,15 @@ export default function Program() {
     setStateName(name || STATE_NAMES[abbr] || abbr)
     trackEvent('model_generated', { state: abbr })
   }, [navigate])
+
+  if (loading) return (
+    <Section>
+      <div className="max-w-xl mx-auto text-center py-20">
+        <H2 className="mb-4">Loading Program...</H2>
+        <Body className="text-lightGray">Running the fund model from a shared link</Body>
+      </div>
+    </Section>
+  )
 
   if (!data) return null
 
@@ -585,6 +648,7 @@ export default function Program() {
             </Button>
             <PdfExportButton fund={fund} programName={programName} includeAffordabilitySensitivity={includeAffordabilitySensitivity} />
             <ExcelExportButton fund={fund} programName={programName} />
+            <ShareButton fund={fund} programName={programName} />
             <Button variant="outline" onClick={() => navigate('/explore')}>
               Explore Another Market
             </Button>
