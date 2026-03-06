@@ -361,13 +361,15 @@ function impactPage(data: ProformaData): string {
             ${scenarios.length > 1 ? (() => {
               const geoBreakdown = result.geoBreakdown;
               if (geoBreakdown && geoBreakdown.length > 1) {
-                // Multi-geo: group scenarios by geography
-                return geoBreakdown.map(gb => `
-                  <h3 class="dr-head" style="margin-top:12px">${gb.geo.geoLabel} (${fmtP(gb.geo.allocationPct, 0)})</h3>
-                  <table class="sc-table"><thead><tr><th>Name</th><th>HOs</th><th>Income</th><th>Home</th></tr></thead><tbody>
-                  ${gb.scenarioResults.map(sr => `<tr><td class="bold">${sr.scenario.name}</td><td>${fmtN(sr.cohorts.reduce((s: number, c: any) => s + c.homeownerCount, 0))}</td><td>${fmt(sr.scenario.medianIncome, 0)}</td><td>${fmt(sr.scenario.medianHomeValue, 0)}</td></tr>`).join('')}
+                // Multi-geo: compact summary referencing the geo distribution page
+                const totalHO = geoBreakdown.reduce((s, gb) => s + gb.totalHomeowners, 0);
+                return `
+                  <h3 class="dr-head" style="margin-top:12px">Geography Summary</h3>
+                  <table class="sc-table"><thead><tr><th>Geography</th><th>Alloc</th><th>HOs</th></tr></thead><tbody>
+                  ${geoBreakdown.map(gb => `<tr><td class="bold">${gb.geo.geoLabel}</td><td>${fmtP(gb.geo.allocationPct, 0)}</td><td>${fmtN(gb.totalHomeowners)}</td></tr>`).join('')}
+                  <tr style="border-top:2px solid ${BORDER}"><td class="bold">Total</td><td></td><td>${fmtN(totalHO)}</td></tr>
                   </tbody></table>
-                `).join('');
+                  <p style="font-size:11px;color:${GRAY};margin-top:8px;font-style:italic">Full scenario detail by geography on the Geographic Distribution page.</p>`;
               }
               return `
                 <h3 class="dr-head" style="margin-top:16px">Scenarios</h3>
@@ -731,7 +733,7 @@ export function generateProformaHTML(data: ProformaData): string {
     /* ── DATA ROOM (Page 3) ── */
     .dr-cols{display:flex;gap:28px;flex:1}
     .dr-left{flex:0 0 480px;display:flex;flex-direction:column}
-    .dr-right{flex:1;display:flex;flex-direction:column}
+    .dr-right{flex:1}
     .dr-head{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:${GREEN};padding-bottom:4px;border-bottom:2px solid ${GREEN};margin-bottom:8px}
     .dr-borrow-row{display:flex;align-items:stretch;gap:0}
     .dr-b-card{flex:1;background:${CREAM};border:1px solid ${BORDER};border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;box-shadow:0 2px 8px rgba(0,0,0,.05)}
@@ -765,7 +767,6 @@ export function generateProformaHTML(data: ProformaData): string {
     .proj-table td:first-child{text-align:left;font-weight:600}
     .proj-table tbody tr:nth-child(even) td{background:${CREAM}}
     .proj-table tr.hl-row td{font-weight:700;color:${DARK};background:${GREEN_BG}}
-    .proj-table-full{flex:1}
     .proj-table-full td{padding:10px 12px;font-size:14px}
     .proj-table-full th{padding:10px 12px}
 
