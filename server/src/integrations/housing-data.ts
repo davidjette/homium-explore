@@ -321,10 +321,24 @@ const STATE_ZIP_2: Record<string, string[]> = {
   DC:['20'],
 };
 
+/** Expand 2-digit prefixes to 3-digit for more complete API coverage */
+function expand2to3(prefixes: string[]): string[] {
+  const out: string[] = [];
+  for (const p of prefixes) {
+    if (p.length === 2) {
+      for (let i = 0; i <= 9; i++) out.push(p + i);
+    } else {
+      out.push(p);
+    }
+  }
+  return out;
+}
+
 /** Fetch counties from external API by aggregating zip-level data */
 async function fetchCountiesFromExternal(stateAbbr: string): Promise<HousingCountyData[]> {
-  const prefixes = STATE_ZIP_2[stateAbbr];
-  if (!prefixes) return [];
+  const rawPrefixes = STATE_ZIP_2[stateAbbr];
+  if (!rawPrefixes) return [];
+  const prefixes = expand2to3(rawPrefixes);
 
   const allZips: any[] = [];
   const seen = new Set<string>();
@@ -473,8 +487,9 @@ export async function getZipsByState(stateAbbr: string): Promise<HousingZipData[
 
   // Fallback: fetch from external API (reuses county fetch data path)
   try {
-    const prefixes = STATE_ZIP_2[state];
-    if (!prefixes) { zipCache.set(state, []); return []; }
+    const rawPrefixes = STATE_ZIP_2[state];
+    if (!rawPrefixes) { zipCache.set(state, []); return []; }
+    const prefixes = expand2to3(rawPrefixes);
 
     const allZips: any[] = [];
     const seen = new Set<string>();
