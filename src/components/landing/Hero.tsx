@@ -1,5 +1,5 @@
 import { Container } from '../../design-system/Layout'
-import { Body, Label } from '../../design-system/Typography'
+import { Body } from '../../design-system/Typography'
 import { Button } from '../../design-system/Button'
 
 const BASE = import.meta.env.BASE_URL

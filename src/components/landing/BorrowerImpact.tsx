@@ -1,5 +1,5 @@
 import { Container } from '../../design-system/Layout'
-import { H2, Label } from '../../design-system/Typography'
+import { H2 } from '../../design-system/Typography'
 
 const THHI_METRICS = [
   { label: 'Average Home Sales Price', value: '$170,000' },
