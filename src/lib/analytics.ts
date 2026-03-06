@@ -22,6 +22,7 @@ type EventName =
   | 'pdf_export'
   | 'excel_export'
   | 'cta_click'
+  | 'shared_link_loaded'
 
 export function trackEvent(event: EventName, params?: Record<string, string | number | boolean>) {
   if (typeof window.gtag === 'function') {
