@@ -53,7 +53,8 @@ export function calculateTopOffSchedule(
   const schedule: TopOffYearState[] = [];
   let cumulativeTopOff = 0;
 
-  for (let year = 1; year <= 30; year++) {
+  const maxYears = fund.program.maxHoldYears || 30;
+  for (let year = 1; year <= maxYears; year++) {
     const homeValue = baseHomeValue * Math.pow(1 + hpa, year);
     const income = baseIncome * Math.pow(1 + wageGrowthPct, year);
 

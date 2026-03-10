@@ -31,8 +31,15 @@ function buildProformaData(fundInput: any, programName?: string): ProformaData {
   const result = runFundModel(fund);
   const blended = result.blended;
 
-  // Use MID scenario for affordability display
-  const midScenario = fund.scenarios.find(s => s.name === 'MID') || fund.scenarios[0];
+  // Use MID scenario for affordability display — override with weighted avg for multi-geo
+  let midScenario = fund.scenarios.find(s => s.name === 'MID') || fund.scenarios[0];
+  if (result.geoBreakdown && result.geoBreakdown.length > 1) {
+    const geos = result.geoBreakdown;
+    const totalAlloc = geos.reduce((s, gb) => s + gb.geo.allocationPct, 0);
+    const wtdIncome = geos.reduce((s, gb) => s + gb.geo.medianIncome * gb.geo.allocationPct, 0) / totalAlloc;
+    const wtdHomeValue = geos.reduce((s, gb) => s + gb.geo.medianHomeValue * gb.geo.allocationPct, 0) / totalAlloc;
+    midScenario = { ...midScenario, medianIncome: Math.round(wtdIncome), medianHomeValue: Math.round(wtdHomeValue) };
+  }
   const legacy = toLegacyAssumptions(fund, midScenario);
   const affordability = calculateAffordability(legacy);
 

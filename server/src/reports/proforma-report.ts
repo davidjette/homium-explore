@@ -231,8 +231,9 @@ function coverPage(data: ProformaData): string {
 
 function opportunityPage(data: ProformaData): string {
   const { fund, blended, affordability, result, geoLabel } = data;
+  const maxHoldYears = fund.program.maxHoldYears || blended.length || 30;
   const yr10 = blended[9];
-  const yr30 = blended[29];
+  const yrMax = blended[maxHoldYears - 1] || blended[blended.length - 1];
   const homeowners = result.totalHomeowners;
   const monthlySavings = affordability.pitiBeforeHomium - affordability.pitiAfterHomium;
   const fundName = fund.name || data.programName;
@@ -248,7 +249,7 @@ function opportunityPage(data: ProformaData): string {
         <div class="sbar"><div class="sbar-l"><span class="sbar-tag">The Opportunity</span><span class="sbar-name">${fundName}</span></div><div class="sbar-r">${homiumWordmark(LIGHT_GRAY, 18)}</div></div>
 
         <div class="bb-hero">
-          <h2 class="bb-headline">${fmtN(homeowners)} Families Could<br/>Own a Home in ${stateName}</h2>
+          <h2 class="bb-headline">${fmtN(homeowners)} Families Could<br/>Own a Home in ${isMultiGeo ? `${result.geoBreakdown!.length} ${stateName} Communities` : stateName}</h2>
           <p class="bb-sub">A shared appreciation mortgage makes homeownership affordable&mdash;and generates returns for investors.</p>
         </div>
 
@@ -278,15 +279,15 @@ function opportunityPage(data: ProformaData): string {
           </div>
           <div class="bb-metric-div"></div>
           <div class="bb-metric">
-            <div class="bb-metric-num">${yr30 ? fmtX(yr30.roiCumulative) : '--'}</div>
+            <div class="bb-metric-num">${yrMax ? fmtX(yrMax.roiCumulative) : '--'}</div>
             <div class="bb-metric-lbl">Fund Return</div>
-            <div class="bb-metric-sub">30-year cumulative ROI</div>
+            <div class="bb-metric-sub">${maxHoldYears}-year cumulative ROI</div>
           </div>
           <div class="bb-metric-div"></div>
           <div class="bb-metric">
-            <div class="bb-metric-num green">${yr30 ? fmtM(yr30.totalEquityCreated) : '--'}</div>
+            <div class="bb-metric-num green">${yrMax ? fmtM(yrMax.totalEquityCreated) : '--'}</div>
             <div class="bb-metric-lbl">Total Wealth Created</div>
-            <div class="bb-metric-sub">over 30 years</div>
+            <div class="bb-metric-sub">over ${maxHoldYears} years</div>
           </div>
         </div>
 
@@ -316,8 +317,16 @@ function impactPage(data: ProformaData): string {
   const totalRaise = fund.raise.totalRaise;
   const stateCode = fund.geography?.state;
   const stateName = stateCode ? STATE_NAMES[stateCode] || geoLabel : geoLabel;
+  const isMultiGeo = result.geoBreakdown && result.geoBreakdown.length > 1;
+  const maxHoldYears = fund.program.maxHoldYears || blended.length || 30;
 
-  const milestones = [0, 2, 4, 6, 9, 14, 19, 24, 29].filter(i => i < blended.length);
+  // Adapt milestone rows to fund term
+  const allMilestones = maxHoldYears <= 5
+    ? Array.from({ length: maxHoldYears }, (_, i) => i)           // 5yr: show every year
+    : maxHoldYears <= 10
+    ? Array.from({ length: maxHoldYears }, (_, i) => i).filter(i => i % 2 === 0 || i === maxHoldYears - 1)  // 10yr: every 2 years
+    : [0, 2, 4, 6, 9, 14, 19, 24, 29];                           // 15+: original milestones
+  const milestones = allMilestones.filter(i => i < blended.length);
 
   return `
     <div class="page impact">
@@ -326,7 +335,7 @@ function impactPage(data: ProformaData): string {
 
         <div class="dr-cols">
           <div class="dr-left">
-            <h3 class="dr-head">Typical ${stateName} Borrower</h3>
+            <h3 class="dr-head">Typical ${isMultiGeo ? 'Program' : stateName} Borrower</h3>
             <div class="dr-borrow-row">
               <div class="dr-b-card">
                 <div class="dr-b-badge">Without Homium</div>
@@ -396,13 +405,13 @@ function impactPage(data: ProformaData): string {
           </div>
 
           <div class="dr-right">
-            <h3 class="dr-head">30-Year Projections</h3>
+            <h3 class="dr-head">${maxHoldYears}-Year Projections</h3>
             <table class="proj-table proj-table-full">
               <thead><tr><th>Year</th><th>Active HOs</th><th>Equity Created</th><th>Fund NAV</th><th>Capital Returned</th><th>ROI</th></tr></thead>
               <tbody>
                 ${milestones.map(i => {
                   const y = blended[i];
-                  const hl = i === 9 || i === 29;
+                  const hl = i === 9 || i === maxHoldYears - 1;
                   return `<tr class="${hl ? 'hl-row' : ''}"><td>${y.calendarYear}</td><td>${fmtN(y.activeHomeowners)}</td><td>${fmtM(y.totalEquityCreated)}</td><td>${fmtM(y.fundNAV)}</td><td>${fmtM(y.cumulativeDistributions)}</td><td>${fmtX(y.roiCumulative)}</td></tr>`;
                 }).join('')}
               </tbody>
@@ -434,7 +443,7 @@ function chartsPage(data: ProformaData): string {
   return `
     <div class="page charts">
       <div class="page-inner">
-        <div class="sbar"><div class="sbar-l"><span class="sbar-tag">30-Year Projections</span><span class="sbar-name">${fundName}</span></div><div class="sbar-r">${homiumWordmark(LIGHT_GRAY, 18)}</div></div>
+        <div class="sbar"><div class="sbar-l"><span class="sbar-tag">${fund.program.maxHoldYears || blended.length || 30}-Year Projections</span><span class="sbar-name">${fundName}</span></div><div class="sbar-r">${homiumWordmark(LIGHT_GRAY, 18)}</div></div>
 
         <div class="charts-grid">
           <div class="chart-card">${svgAreaChart(cd.map(d => ({ x: d.year, y: d.equity })), cW, cH, GREEN, 'Homeowner Equity Created')}</div>

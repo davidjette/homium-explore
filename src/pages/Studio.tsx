@@ -175,10 +175,20 @@ export default function Studio() {
   }, [wizard.zip, stateZips])
 
   // Computed borrower values (with override support)
-  const baseIncome = wizard.useOverrides && wizard.overrideMedianIncome
-    ? wizard.overrideMedianIncome : wizard.marketData.medianIncome
-  const baseHomeValue = wizard.useOverrides && wizard.overrideMedianHomeValue
-    ? wizard.overrideMedianHomeValue : wizard.marketData.medianHomeValue
+  // For multi-geo: use allocation-weighted averages instead of single geo's state-level data
+  const isMultiGeo = wizard.geoAllocations && wizard.geoAllocations.length > 1
+  let baseIncome: number, baseHomeValue: number
+  if (isMultiGeo && !wizard.useOverrides) {
+    const allocs = wizard.geoAllocations!
+    const totalAlloc = allocs.reduce((s, g) => s + g.allocationPct, 0)
+    baseIncome = allocs.reduce((s, g) => s + g.medianIncome * g.allocationPct, 0) / totalAlloc
+    baseHomeValue = allocs.reduce((s, g) => s + g.medianHomeValue * g.allocationPct, 0) / totalAlloc
+  } else {
+    baseIncome = wizard.useOverrides && wizard.overrideMedianIncome
+      ? wizard.overrideMedianIncome : wizard.marketData.medianIncome
+    baseHomeValue = wizard.useOverrides && wizard.overrideMedianHomeValue
+      ? wizard.overrideMedianHomeValue : wizard.marketData.medianHomeValue
+  }
   const borrowerIncome = baseIncome * wizard.targetAMIPct
   const borrowerHomePrice = baseHomeValue * wizard.targetHomePricePct
   const maxPITI = (borrowerIncome / 12) * 0.35
@@ -251,7 +261,7 @@ export default function Studio() {
           maxHoldYears: wizard.maxHoldYears,
           fixedHomeCount: wizard.fixedHomeCount,
         },
-        payoffSchedule: generatePayoffSchedule(wizard.payoffPeakYear, wizard.payoffConcentration),
+        payoffSchedule: generatePayoffSchedule(wizard.payoffPeakYear, wizard.payoffConcentration, wizard.maxHoldYears),
         scenarios,
       }
 
@@ -801,6 +811,8 @@ function StepProgram({ wizard, homiumAmount, onUpdate, onNext, onBack }: {
           value={String(wizard.maxHoldYears)}
           onChange={e => onUpdate({ maxHoldYears: parseInt(e.target.value) })}
         >
+          <option value="5">5 years</option>
+          <option value="10">10 years</option>
           <option value="15">15 years</option>
           <option value="20">20 years</option>
           <option value="25">25 years</option>
@@ -1018,7 +1030,7 @@ function StepFund({ wizard, defaultScenarios, effectiveRaise, borrowerHomePrice,
               />
             </div>
           </div>
-          <PayoffSparkline peakYear={wizard.payoffPeakYear} concentration={wizard.payoffConcentration} />
+          <PayoffSparkline peakYear={wizard.payoffPeakYear} concentration={wizard.payoffConcentration} maxYears={wizard.maxHoldYears} />
         </div>
 
         {/* Scenario preview */}
@@ -1142,10 +1154,10 @@ function LivePreview({ step, wizard, effectiveRaise, borrowerIncome, borrowerHom
   )
 }
 
-function PayoffSparkline({ peakYear, concentration }: { peakYear: number; concentration: number }) {
-  const schedule = useMemo(() => generatePayoffSchedule(peakYear, concentration), [peakYear, concentration])
+function PayoffSparkline({ peakYear, concentration, maxYears = 30 }: { peakYear: number; concentration: number; maxYears?: number }) {
+  const schedule = useMemo(() => generatePayoffSchedule(peakYear, concentration, maxYears), [peakYear, concentration, maxYears])
   const maxPct = Math.max(...schedule.map(s => s.annualPct))
-  const barW = 100 / 30
+  const barW = 100 / schedule.length
   return (
     <div className="mt-3">
       <svg viewBox="0 0 100 28" className="w-full h-12" preserveAspectRatio="none">
@@ -1168,8 +1180,8 @@ function PayoffSparkline({ peakYear, concentration }: { peakYear: number; concen
       </svg>
       <div className="flex justify-between font-body text-[10px] text-lightGray mt-0.5">
         <span>Yr 1</span>
-        <span>Yr 15</span>
-        <span>Yr 30</span>
+        <span>Yr {Math.ceil(schedule.length / 2)}</span>
+        <span>Yr {schedule.length}</span>
       </div>
     </div>
   )

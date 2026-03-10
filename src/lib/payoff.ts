@@ -15,19 +15,20 @@ export const PAYOFF_PRESETS: PayoffPreset[] = [
 ];
 
 /**
- * Generate a 30-year payoff schedule using a log-normal distribution shape.
+ * Generate a payoff schedule using a log-normal distribution shape.
  * @param peakYear - The year with highest exit probability (maps to mode of log-normal)
  * @param concentration - 0..1, higher = more concentrated around peak (maps to 1/sigma)
+ * @param maxYears - Number of years in the schedule (defaults to 30)
  */
-export function generatePayoffSchedule(peakYear: number, concentration: number): PayoffEntry[] {
+export function generatePayoffSchedule(peakYear: number, concentration: number, maxYears: number = 30): PayoffEntry[] {
   // Map concentration (0-1) to sigma: high concentration = low sigma
   const sigma = 0.3 + (1 - concentration) * 0.8; // range: 0.3 (tight) to 1.1 (spread)
   // From log-normal mode formula: mode = exp(mu - sigma^2), so mu = ln(mode) + sigma^2
   const mu = Math.log(Math.max(peakYear, 1)) + sigma * sigma;
 
-  // Generate raw log-normal PDF values for years 1-30
+  // Generate raw log-normal PDF values for years 1-maxYears
   const raw: number[] = [];
-  for (let yr = 1; yr <= 30; yr++) {
+  for (let yr = 1; yr <= maxYears; yr++) {
     const lnX = Math.log(yr);
     const exponent = -((lnX - mu) ** 2) / (2 * sigma * sigma);
     const pdf = (1 / (yr * sigma * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);

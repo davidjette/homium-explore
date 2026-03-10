@@ -34,6 +34,7 @@ interface ProgramData {
     equityCreated: number
     activeHomeowners: number
     roiCumulative: number
+    homeownersCum: number
   } | null
   housingData: {
     medianIncome: number
@@ -105,6 +106,7 @@ export default function Program() {
               equityCreated: Math.round(result.blended[9].totalEquityCreated),
               activeHomeowners: result.blended[9].activeHomeowners,
               roiCumulative: result.blended[9].roiCumulative,
+              homeownersCum: result.blended[9].totalHomeownersCum,
             } : null,
             scenarios: result.scenarioResults.map((sr: any) => ({
               name: sr.scenario.name,
@@ -171,7 +173,8 @@ export default function Program() {
   const { fund, totalHomeowners, blendedYr10, scenarios, fullResult, topOffSchedule, includeAffordabilitySensitivity, geoBreakdown } = data
   const blended = fullResult?.blended || []
   const yr10 = blendedYr10
-  const yr30 = blended.length >= 30 ? blended[29] : null
+  const maxHoldYears = fund?.program?.maxHoldYears || blended.length || 30
+  const yrMax = blended.length >= maxHoldYears ? blended[maxHoldYears - 1] : blended[blended.length - 1] || null
 
   // Chart data — accumulate returned capital into a running total
   let cumulativeReturns = 0
@@ -197,13 +200,19 @@ export default function Program() {
   const isReinvesting = fund?.raise?.reinvestNetProceeds === true
   const returnsLabel = isReinvesting ? 'Capital Recycled' : 'Cumulative Returns'
 
-  // Borrower profile from MID scenario
-  const midScenario = scenarios.find(s => s.name === 'MID') || scenarios[0]
+  // Borrower profile — use weighted composite for multi-geo, MID scenario for single-geo
+  let midScenario = scenarios.find(s => s.name === 'MID') || scenarios[0]
+  if (isMultiGeo && geoBreakdown) {
+    const totalAlloc = geoBreakdown.reduce((s, gb) => s + gb.geo.allocationPct, 0)
+    const wtdIncome = geoBreakdown.reduce((s, gb) => s + gb.geo.medianIncome * gb.geo.allocationPct, 0) / totalAlloc
+    const wtdHomeValue = geoBreakdown.reduce((s, gb) => s + gb.geo.medianHomeValue * gb.geo.allocationPct, 0) / totalAlloc
+    midScenario = { ...midScenario, medianIncome: Math.round(wtdIncome), medianHomeValue: Math.round(wtdHomeValue) }
+  }
   let midAffordability = fullResult?.scenarioResults?.[1]?.affordability
     || fullResult?.scenarioResults?.[0]?.affordability
 
   // Fallback: compute affordability client-side when fullResult doesn't include it
-  if (!midAffordability && midScenario && fund) {
+  if ((!midAffordability || isMultiGeo) && midScenario && fund) {
     const income = midScenario.medianIncome
     const homePrice = midScenario.medianHomeValue
     const rate = fund.assumptions?.interestRate || 0.07
@@ -268,7 +277,7 @@ export default function Program() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-14">
             <MetricCard
               label="Homeowners Served"
-              value={fmtNumber(totalHomeowners)}
+              value={fmtNumber(yr10?.homeownersCum || totalHomeowners)}
               description="Families achieving homeownership over 10 years"
             />
             <MetricCard
@@ -298,24 +307,28 @@ export default function Program() {
                 A <strong className="text-dark">{fmtDollar(totalRaise)}</strong> fund targeting families
                 earning {midScenario ? fmtPct(0.80) : ''} AMI across{' '}
                 <strong className="text-dark">{isMultiGeo ? `${geoBreakdown!.length} geographies in ${stateName}` : geoLabel}</strong> could
-                help <strong className="text-dark">{fmtNumber(totalHomeowners)} families</strong> achieve
+                help <strong className="text-dark">{fmtNumber(yr10?.homeownersCum || totalHomeowners)} families</strong> achieve
                 homeownership over 10 years
                 {yr10 ? <>, creating <strong className="text-green">{fmtDollar(yr10.equityCreated)}</strong> in homeowner equity</> : ''}.
               </p>
               {midAffordability && (
                 <p>
-                  The program closes a monthly affordability gap of{' '}
-                  <strong className="text-dark">{fmtDollar(midAffordability.pitiBeforeHomium - midAffordability.pitiAfterHomium, 0)}</strong>{' '}
+                  {midAffordability.pitiAfterHomium <= midAffordability.maxPITI
+                    ? <>The program closes a monthly affordability gap of{' '}
+                        <strong className="text-dark">{fmtDollar(midAffordability.pitiBeforeHomium - midAffordability.maxPITI, 0)}</strong></>
+                    : <>The program reduces the monthly affordability gap by{' '}
+                        <strong className="text-dark">{fmtDollar(midAffordability.pitiBeforeHomium - midAffordability.pitiAfterHomium, 0)}</strong></>
+                  }{' '}
                   by providing a {fmtPct(fund?.program?.homiumSAPct || 0.20)} shared appreciation mortgage,
                   reducing the typical family's monthly payment from {fmtDollar(midAffordability.pitiBeforeHomium, 0)}{' '}
                   to {fmtDollar(midAffordability.pitiAfterHomium, 0)}.
                 </p>
               )}
-              {yr30 && (
+              {yrMax && (
                 <p>
-                  Over 30 years, the fund is projected to generate a cumulative ROI of{' '}
-                  <strong className="text-dark">{fmtMultiple(yr30.roiCumulative)}</strong>,
-                  while creating <strong className="text-green">{fmtDollar(yr30.totalEquityCreated)}</strong>{' '}
+                  Over {maxHoldYears} years, the fund is projected to generate a cumulative ROI of{' '}
+                  <strong className="text-dark">{fmtMultiple(yrMax.roiCumulative)}</strong>,
+                  while creating <strong className="text-green">{fmtDollar(yrMax.totalEquityCreated)}</strong>{' '}
                   in total homeowner equity.
                 </p>
               )}
@@ -326,7 +339,7 @@ export default function Program() {
         {/* Charts */}
         {chartData.length > 0 && (
           <Section>
-            <H2 className="mb-10 text-center">30-Year Projections</H2>
+            <H2 className="mb-10 text-center">{maxHoldYears}-Year Projections</H2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
               {/* Equity Created */}
               <Card>
@@ -462,7 +475,7 @@ export default function Program() {
                     <Label className="text-green block mb-3">With Homium</Label>
                     <p className="font-body text-dark">Monthly PITI: {fmtDollar(midAffordability.pitiAfterHomium, 0)}</p>
                     <p className="font-body text-dark">Monthly Savings: {fmtDollar(midAffordability.pitiBeforeHomium - midAffordability.pitiAfterHomium, 0)}</p>
-                    <p className="font-body text-green font-medium mt-2">
+                    <p className={`font-body font-medium mt-2 ${midAffordability.pitiAfterHomium <= midAffordability.maxPITI ? 'text-green' : 'text-red-600'}`}>
                       {midAffordability.pitiAfterHomium <= midAffordability.maxPITI
                         ? 'Affordable!'
                         : `Remaining gap: ${fmtDollar(midAffordability.pitiAfterHomium - midAffordability.maxPITI, 0)}/mo`
@@ -472,8 +485,14 @@ export default function Program() {
                 </div>
                 <div className="mt-6 pt-6 border-t border-border text-center">
                   <Body>
-                    A family earning <strong className="text-dark">{fmtDollar(midScenario.medianIncome)}</strong> can
-                    now afford a <strong className="text-dark">{fmtDollar(midScenario.medianHomeValue)}</strong> home.
+                    {midAffordability.pitiAfterHomium <= midAffordability.maxPITI
+                      ? <>A family earning <strong className="text-dark">{fmtDollar(midScenario.medianIncome)}</strong> can
+                          now afford a <strong className="text-dark">{fmtDollar(midScenario.medianHomeValue)}</strong> home.</>
+                      : <>Homium reduces the monthly payment gap by{' '}
+                          <strong className="text-dark">{fmtDollar(midAffordability.pitiBeforeHomium - midAffordability.pitiAfterHomium, 0)}</strong>,
+                          making a <strong className="text-dark">{fmtDollar(midScenario.medianHomeValue)}</strong> home
+                          more accessible for a family earning <strong className="text-dark">{fmtDollar(midScenario.medianIncome)}</strong>.</>
+                    }
                   </Body>
                 </div>
               </Card>
