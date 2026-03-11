@@ -20,6 +20,7 @@ import { generateReport, ReportType } from '../reports/report-engine';
 import { authMiddleware } from './auth';
 import { authRouter, jwtAuthMiddleware } from './auth-routes';
 import reportRoutes from './report-routes';
+import usageRoutes from './usage-routes';
 
 const app = express();
 app.use(cors());
@@ -27,6 +28,9 @@ app.use(express.json());
 
 // Auth routes (login/verify) — must be before auth middleware
 app.use('/api/auth', authRouter);
+
+// Usage analytics — must be before auth middleware (anonymous POST from frontend)
+app.use('/api/v2/usage', usageRoutes);
 
 // API key auth — protects write endpoints when FUND_API_KEY is set
 app.use('/api', authMiddleware);
