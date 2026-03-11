@@ -12,6 +12,7 @@ import PdfExportButton from '../components/shared/PdfExportButton'
 import ExcelExportButton from '../components/shared/ExcelExportButton'
 import ShareButton from '../components/shared/ShareButton'
 import { trackEvent } from '../lib/analytics'
+import { logUsage } from '../lib/usageLog'
 import { runFundModel } from '../lib/api'
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
@@ -145,10 +146,16 @@ export default function Program() {
       navigate('/')
       return
     }
-    setData(JSON.parse(raw))
+    const parsed = JSON.parse(raw)
+    setData(parsed)
     setStateAbbr(abbr)
     setStateName(name || STATE_NAMES[abbr] || abbr)
     trackEvent('model_generated', { state: abbr })
+    logUsage('program_viewed', {
+      state: abbr,
+      programName: parsed.fund?.name,
+      totalRaise: parsed.fund?.raise?.totalRaise,
+    })
   }, [navigate])
 
   if (loading) return (

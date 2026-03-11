@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '../../design-system/Button'
 import { downloadProformaPDF } from '../../lib/api'
 import { trackEvent } from '../../lib/analytics'
+import { logUsage } from '../../lib/usageLog'
 import type { FundConfig } from '../../lib/types'
 
 interface Props {
@@ -20,6 +21,7 @@ export default function PdfExportButton({ fund, programName, includeAffordabilit
     try {
       await downloadProformaPDF(fund, programName, includeAffordabilitySensitivity)
       trackEvent('pdf_export', { programName: programName || 'unnamed' })
+      logUsage('pdf_export', { programName: programName || 'unnamed' })
     } catch (err) {
       console.error('PDF export failed:', err)
       const msg = err instanceof Error ? err.message : String(err)

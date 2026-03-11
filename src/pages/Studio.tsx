@@ -12,6 +12,7 @@ import {
   runFundModel, computeSmartDefaults, fmtDollar, fmtPct
 } from '../lib/api'
 import { trackEvent } from '../lib/analytics'
+import { logUsage } from '../lib/usageLog'
 import type { WizardState, FundConfig, ScenarioConfig, GeoAllocation } from '../lib/types'
 import { DEFAULT_WIZARD_STATE } from '../lib/types'
 import { generatePayoffSchedule, PAYOFF_PRESETS } from '../lib/payoff'
@@ -265,6 +266,7 @@ export default function Studio() {
         scenarios,
       }
 
+      logUsage('model_run', { state: wizard.state, config })
       const result = await runFundModel(config)
       sessionStorage.setItem('programResult', JSON.stringify({
         fund: result.fund,
@@ -341,7 +343,7 @@ export default function Studio() {
                 countiesLoading={countiesLoading}
                 countyZips={countyZips}
                 onUpdate={update}
-                onNext={() => setStep(2)}
+                onNext={() => { setStep(2); logUsage('wizard_step', { step: 2, state: wizard.state }) }}
               />
             )}
             {step === 2 && (
@@ -350,7 +352,7 @@ export default function Studio() {
                 borrowerIncome={borrowerIncome}
                 borrowerHomePrice={borrowerHomePrice}
                 onUpdate={update}
-                onNext={() => setStep(3)}
+                onNext={() => { setStep(3); logUsage('wizard_step', { step: 3, state: wizard.state }) }}
                 onBack={() => setStep(1)}
               />
             )}
@@ -359,7 +361,7 @@ export default function Studio() {
                 wizard={wizard}
                 homiumAmount={homiumAmount}
                 onUpdate={update}
-                onNext={() => setStep(4)}
+                onNext={() => { setStep(4); logUsage('wizard_step', { step: 4, state: wizard.state }) }}
                 onBack={() => setStep(2)}
               />
             )}
@@ -481,7 +483,11 @@ function StepGeography({ wizard, counties, countiesLoading, countyZips, onUpdate
       <Select
         label="State"
         value={wizard.state}
-        onChange={e => onUpdate({ state: e.target.value, county: undefined, zip: undefined })}
+        onChange={e => {
+          const val = e.target.value
+          onUpdate({ state: val, county: undefined, zip: undefined })
+          if (val) logUsage('state_selected', { state: val })
+        }}
         className="mb-6"
       >
         <option value="">Select a state...</option>

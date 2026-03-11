@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { submitToGoogleSheets, type LeadInfo } from '../lib/leadCapture'
 import { trackEvent } from '../lib/analytics'
+import { logUsage } from '../lib/usageLog'
 
 const STORAGE_KEY = 'homium_lead_info'
 
@@ -32,6 +33,12 @@ export function useLeadCapture() {
       organization: info.organization,
       role: info.role || '',
       state: info.state || '',
+    })
+    logUsage('lead_submitted', {
+      email: info.email,
+      name: info.name,
+      organization: info.organization,
+      state: info.state,
     })
   }, [])
 
