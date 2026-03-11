@@ -116,11 +116,15 @@ export default function AffordabilityTool() {
       sessionStorage.setItem('programResult', JSON.stringify({
         fund: result.fund,
         totalHomeowners: result.totalHomeowners,
-        blendedYr10: result.blended[9] ? {
-          equityCreated: Math.round(result.blended[9].totalEquityCreated),
-          activeHomeowners: result.blended[9].activeHomeowners,
-          roiCumulative: result.blended[9].roiCumulative,
-        } : null,
+        blendedYrEnd: (() => {
+          const endIdx = (result.fund?.program?.maxHoldYears || result.blended.length) - 1;
+          const yr = result.blended[endIdx];
+          return yr ? {
+            equityCreated: Math.round(yr.totalEquityCreated),
+            activeHomeowners: yr.activeHomeowners,
+            roiCumulative: yr.roiCumulative,
+          } : null;
+        })(),
         scenarios: result.scenarioResults.map(sr => ({
           name: sr.scenario.name,
           homeowners: sr.cohorts.reduce((s, c) => s + c.homeownerCount, 0),

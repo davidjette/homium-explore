@@ -30,7 +30,7 @@ interface ProgramData {
     medianHomeValue: number
     affordabilityGap: number
   }>
-  blendedYr10: {
+  blendedYrEnd: {
     equityCreated: number
     activeHomeowners: number
     roiCumulative: number
@@ -99,14 +99,16 @@ export default function Program() {
         setLoading(true)
 
         runFundModel(fundConfig).then(result => {
+          const endIdx = (result.fund?.program?.maxHoldYears || result.blended.length) - 1;
+          const yrEndData = result.blended[endIdx];
           setData({
             fund: result.fund,
             totalHomeowners: result.totalHomeowners,
-            blendedYr10: result.blended[9] ? {
-              equityCreated: Math.round(result.blended[9].totalEquityCreated),
-              activeHomeowners: result.blended[9].activeHomeowners,
-              roiCumulative: result.blended[9].roiCumulative,
-              homeownersCum: result.blended[9].totalHomeownersCum,
+            blendedYrEnd: yrEndData ? {
+              equityCreated: Math.round(yrEndData.totalEquityCreated),
+              activeHomeowners: yrEndData.activeHomeowners,
+              roiCumulative: yrEndData.roiCumulative,
+              homeownersCum: yrEndData.totalHomeownersCum,
             } : null,
             scenarios: result.scenarioResults.map((sr: any) => ({
               name: sr.scenario.name,
@@ -170,9 +172,9 @@ export default function Program() {
     )
   }
 
-  const { fund, totalHomeowners, blendedYr10, scenarios, fullResult, topOffSchedule, includeAffordabilitySensitivity, geoBreakdown } = data
+  const { fund, totalHomeowners, blendedYrEnd, scenarios, fullResult, topOffSchedule, includeAffordabilitySensitivity, geoBreakdown } = data
   const blended = fullResult?.blended || []
-  const yr10 = blendedYr10
+  const yrEnd = blendedYrEnd
   const maxHoldYears = fund?.program?.maxHoldYears || blended.length || 30
   const yrMax = blended.length >= maxHoldYears ? blended[maxHoldYears - 1] : blended[blended.length - 1] || null
 
@@ -277,18 +279,18 @@ export default function Program() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-14">
             <MetricCard
               label="Homeowners Served"
-              value={fmtNumber(yr10?.homeownersCum || totalHomeowners)}
-              description="Families achieving homeownership over 10 years"
+              value={fmtNumber(yrEnd?.homeownersCum || totalHomeowners)}
+              description={`Families achieving homeownership over ${maxHoldYears} years`}
             />
             <MetricCard
               label="Equity Created"
-              value={yr10 ? fmtDollar(yr10.equityCreated) : '--'}
-              description="Total homeowner equity generated (10yr)"
+              value={yrEnd ? fmtDollar(yrEnd.equityCreated) : '--'}
+              description={`Total homeowner equity generated (${maxHoldYears}yr)`}
             />
             <MetricCard
               label="Fund ROI"
-              value={yr10 ? fmtMultiple(yr10.roiCumulative) : '--'}
-              description="Cumulative return on invested capital (10yr)"
+              value={yrEnd ? fmtMultiple(yrEnd.roiCumulative) : '--'}
+              description={`Cumulative return on invested capital (${maxHoldYears}yr)`}
             />
             <MetricCard
               label="Monthly Savings"
@@ -307,9 +309,9 @@ export default function Program() {
                 A <strong className="text-dark">{fmtDollar(totalRaise)}</strong> fund targeting families
                 earning {midScenario ? fmtPct(0.80) : ''} AMI across{' '}
                 <strong className="text-dark">{isMultiGeo ? `${geoBreakdown!.length} geographies in ${stateName}` : geoLabel}</strong> could
-                help <strong className="text-dark">{fmtNumber(yr10?.homeownersCum || totalHomeowners)} families</strong> achieve
-                homeownership over 10 years
-                {yr10 ? <>, creating <strong className="text-green">{fmtDollar(yr10.equityCreated)}</strong> in homeowner equity</> : ''}.
+                help <strong className="text-dark">{fmtNumber(yrEnd?.homeownersCum || totalHomeowners)} families</strong> achieve
+                homeownership over {maxHoldYears} years
+                {yrEnd ? <>, creating <strong className="text-green">{fmtDollar(yrEnd.equityCreated)}</strong> in homeowner equity</> : ''}.
               </p>
               {midAffordability && (
                 <p>
@@ -430,19 +432,19 @@ export default function Program() {
                       <th className="py-2 pr-4 font-bold text-dark">Geography</th>
                       <th className="py-2 pr-4 font-bold text-dark text-right">Allocation</th>
                       <th className="py-2 pr-4 font-bold text-dark text-right">Homeowners</th>
-                      <th className="py-2 pr-4 font-bold text-dark text-right">Equity (Yr 10)</th>
+                      <th className="py-2 pr-4 font-bold text-dark text-right">Equity (Yr {maxHoldYears})</th>
                       <th className="py-2 font-bold text-dark text-right">Avg MHV</th>
                     </tr>
                   </thead>
                   <tbody>
                     {geoBreakdown.map(gb => {
-                      const yr10equity = gb.blended[9]?.totalEquityCreated || 0;
+                      const endEquity = gb.blended[maxHoldYears - 1]?.totalEquityCreated || 0;
                       return (
                         <tr key={gb.geo.geoId} className="border-b border-border/50">
                           <td className="py-2 pr-4 font-medium text-dark">{gb.geo.geoLabel}</td>
                           <td className="py-2 pr-4 text-right">{fmtPct(gb.geo.allocationPct)}</td>
                           <td className="py-2 pr-4 text-right">{fmtNumber(gb.totalHomeowners)}</td>
-                          <td className="py-2 pr-4 text-right">{fmtDollar(yr10equity)}</td>
+                          <td className="py-2 pr-4 text-right">{fmtDollar(endEquity)}</td>
                           <td className="py-2 text-right">{fmtDollar(gb.geo.medianHomeValue)}</td>
                         </tr>
                       );

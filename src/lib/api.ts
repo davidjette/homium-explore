@@ -97,7 +97,7 @@ export async function autoPopulate(state: string, totalRaise: number = 25_000_00
     medianHomeValue: number;
     affordabilityGap: number;
   }>;
-  blendedYr10: {
+  blendedYrEnd: {
     equityCreated: number;
     activeHomeowners: number;
     roiCumulative: number;

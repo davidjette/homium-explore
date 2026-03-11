@@ -135,14 +135,16 @@ export function createFundPersistenceRoutes(fundService: FundService): Router {
           affordability: sr.affordability,
         })),
         blended: {
-          yr10: runResult.blended[9]
-            ? {
-                equityCreated: Math.round(runResult.blended[9].totalEquityCreated),
-                fundBalance: Math.round(runResult.blended[9].fundBalance),
-                activeHomeowners: runResult.blended[9].activeHomeowners,
-                roiCumulative: runResult.blended[9].roiCumulative,
-              }
-            : null,
+          yrEnd: (() => {
+            const ei = (runResult.fund?.program?.maxHoldYears || runResult.blended.length) - 1;
+            const y = runResult.blended[ei];
+            return y ? {
+              equityCreated: Math.round(y.totalEquityCreated),
+              fundBalance: Math.round(y.fundBalance),
+              activeHomeowners: y.activeHomeowners,
+              roiCumulative: y.roiCumulative,
+            } : null;
+          })(),
           yr30: runResult.blended[29]
             ? {
                 equityCreated: Math.round(runResult.blended[29].totalEquityCreated),
@@ -195,14 +197,16 @@ export function createFundPersistenceRoutes(fundService: FundService): Router {
             runAt: result.runAt,
             totalHomeowners: result.totalHomeowners,
             blended: {
-              yr10: result.blended[9]
-                ? {
-                    equityCreated: Math.round(result.blended[9].totalEquityCreated),
-                    fundBalance: Math.round(result.blended[9].fundBalance),
-                    activeHomeowners: result.blended[9].activeHomeowners,
-                    roiCumulative: result.blended[9].roiCumulative,
-                  }
-                : null,
+              yrEnd: (() => {
+                const ei = (fund.program?.maxHoldYears || result.blended.length) - 1;
+                const y = result.blended[ei];
+                return y ? {
+                  equityCreated: Math.round(y.totalEquityCreated),
+                  fundBalance: Math.round(y.fundBalance),
+                  activeHomeowners: y.activeHomeowners,
+                  roiCumulative: y.roiCumulative,
+                } : null;
+              })(),
               yr30: result.blended[29]
                 ? {
                     equityCreated: Math.round(result.blended[29].totalEquityCreated),
@@ -271,15 +275,17 @@ export function createFundPersistenceRoutes(fundService: FundService): Router {
             roiCumulative: result.blended.map((y: any) => y.roiCumulative),
           },
           keyMetrics: {
-            yr10: result.blended[9]
-              ? {
-                  equityCreated: Math.round(result.blended[9].totalEquityCreated),
-                  fundBalance: Math.round(result.blended[9].fundBalance),
-                  activeHomeowners: result.blended[9].activeHomeowners,
-                  totalHomeownersCum: result.blended[9].totalHomeownersCum,
-                  roiCumulative: result.blended[9].roiCumulative,
-                }
-              : null,
+            yrEnd: (() => {
+              const ei = (fund.program?.maxHoldYears || result.blended.length) - 1;
+              const y = result.blended[ei];
+              return y ? {
+                equityCreated: Math.round(y.totalEquityCreated),
+                fundBalance: Math.round(y.fundBalance),
+                activeHomeowners: y.activeHomeowners,
+                totalHomeownersCum: y.totalHomeownersCum,
+                roiCumulative: y.roiCumulative,
+              } : null;
+            })(),
             yr30: result.blended[29]
               ? {
                   equityCreated: Math.round(result.blended[29].totalEquityCreated),

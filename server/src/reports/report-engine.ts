@@ -147,12 +147,13 @@ async function getFundData(fundService: FundService, fundId: string): Promise<Re
 
 function generateLPReport(data: ReportData): string {
   const b = data.blended;
-  const yr10 = b[9];
+  const maxHoldYears = data.fund?.program?.maxHoldYears || b.length || 30;
+  const yr10 = b[maxHoldYears - 1];
   const yr30 = b[29];
   const totalHomeowners = data.scenarios.reduce((s: number, sc: any) => s + (sc.homeowners || 0), 0);
 
   const yearRows = b.map((y: any, i: number) => {
-    const highlight = (i === 9 || i === 29) ? ' class="bold"' : '';
+    const highlight = (i === maxHoldYears - 1 || i === b.length - 1) ? ' class="bold"' : '';
     return `<tr${highlight}>
       <td>${i + 1}</td><td>${y.calendarYear}</td>
       <td class="text-right mono">${fmtP(y.roiAnnual || 0)}</td>
@@ -186,7 +187,7 @@ function generateLPReport(data: ReportData): string {
   <div class="stat-grid">
     <div class="stat-card"><div class="value">${fmtN(totalHomeowners)}</div><div class="label">Homeowners Served</div></div>
     <div class="stat-card"><div class="value">${fmtM(data.fund.totalRaise || data.fund.raise?.totalRaise)}</div><div class="label">Total Capital Raised</div></div>
-    <div class="stat-card"><div class="value">${yr10 ? fmtP(yr10.roiCumulative) : '—'}</div><div class="label">10-Year ROI</div></div>
+    <div class="stat-card"><div class="value">${yr10 ? fmtP(yr10.roiCumulative) : '—'}</div><div class="label">${maxHoldYears}-Year ROI</div></div>
     <div class="stat-card"><div class="value">${yr30 ? fmtM(yr30.totalEquityCreated) : '—'}</div><div class="label">Equity Created (30yr)</div></div>
   </div>
 
@@ -230,7 +231,8 @@ function generateLPReport(data: ReportData): string {
 // ── Report: Fund Summary One-Pager ──
 
 function generateSummaryReport(data: ReportData): string {
-  const yr10 = data.blended[9];
+  const maxHoldYears = data.fund?.program?.maxHoldYears || data.blended.length || 30;
+  const yr10 = data.blended[maxHoldYears - 1];
   const yr30 = data.blended[29];
   const totalHomeowners = data.scenarios.reduce((s: number, sc: any) => s + (sc.homeowners || 0), 0);
   const raise = data.fund.totalRaise || data.fund.raise?.totalRaise || 10_000_000;
@@ -257,8 +259,8 @@ function generateSummaryReport(data: ReportData): string {
       <div class="impact-box">
         <div class="impact-grid">
           <div><div class="big">${fmtN(totalHomeowners)}</div><div class="lbl">Homeowners Served</div></div>
-          <div><div class="big">${yr10 ? fmtP(yr10.roiCumulative) : '—'}</div><div class="lbl">10-Year ROI</div></div>
-          <div><div class="big">${yr10 ? `$${(yr10.totalEquityCreated / (raise * 0.25)).toFixed(1)}` : '—'}</div><div class="lbl">Wealth per $1 (10yr)</div></div>
+          <div><div class="big">${yr10 ? fmtP(yr10.roiCumulative) : '—'}</div><div class="lbl">${maxHoldYears}-Year ROI</div></div>
+          <div><div class="big">${yr10 ? `$${(yr10.totalEquityCreated / (raise * 0.25)).toFixed(1)}` : '—'}</div><div class="lbl">Wealth per $1 (${maxHoldYears}yr)</div></div>
           <div><div class="big">${yr30 ? fmtM(yr30.totalEquityCreated) : '—'}</div><div class="lbl">Equity Created (30yr)</div></div>
         </div>
       </div>
@@ -408,7 +410,9 @@ function generateManagerReport(data: ReportData): string {
 
 function generateSensitivityReport(data: ReportData): string {
   const b = data.blended;
-  const yr10 = b[9];
+  const maxHoldYears = data.fund?.program?.maxHoldYears || b.length || 30;
+  const endIdx = maxHoldYears - 1;
+  const yrEnd = b[endIdx];
   const yr30 = b[29];
   const raise = data.fund.totalRaise || data.fund.raise?.totalRaise || 10_000_000;
 
@@ -421,9 +425,9 @@ function generateSensitivityReport(data: ReportData): string {
     return {
       hpa,
       homeowners,
-      roi10: fundResults[9]?.roiCumulative || 0,
+      roi10: fundResults[endIdx]?.roiCumulative || 0,
       roi30: fundResults[29]?.roiCumulative || 0,
-      equity10: fundResults[9]?.totalEquityCreated || 0,
+      equity10: fundResults[endIdx]?.totalEquityCreated || 0,
       equity30: fundResults[29]?.totalEquityCreated || 0,
     };
   });
@@ -435,7 +439,7 @@ function generateSensitivityReport(data: ReportData): string {
     return {
       size,
       homeowners: Math.round(data.scenarios.reduce((s: number, sc: any) => s + sc.homeowners, 0) * ratio),
-      roi10: yr10?.roiCumulative || 0,
+      roi10: yrEnd?.roiCumulative || 0,
       roi30: yr30?.roiCumulative || 0,
       equity30: (yr30?.totalEquityCreated || 0) * ratio,
     };
@@ -452,7 +456,7 @@ function generateSensitivityReport(data: ReportData): string {
   <h2>Home Price Appreciation Sensitivity</h2>
   <p>Base case: 5% annual HPA. How do returns change as appreciation varies?</p>
   <table>
-    <thead><tr><th>HPA</th><th class="text-right">Homeowners</th><th class="text-right">10yr ROI</th><th class="text-right">30yr ROI</th><th class="text-right">Equity (10yr)</th><th class="text-right">Equity (30yr)</th></tr></thead>
+    <thead><tr><th>HPA</th><th class="text-right">Homeowners</th><th class="text-right">${maxHoldYears}yr ROI</th><th class="text-right">30yr ROI</th><th class="text-right">Equity (${maxHoldYears}yr)</th><th class="text-right">Equity (30yr)</th></tr></thead>
     <tbody>
       ${hpaSensitivity.map(r => `<tr${r.hpa === 0.05 ? ' class="bold"' : ''}>
         <td>${fmtP(r.hpa, 0)}</td>
@@ -471,7 +475,7 @@ function generateSensitivityReport(data: ReportData): string {
   <h2>Fund Size Sensitivity</h2>
   <p>ROI percentages are scale-invariant. Social impact scales linearly with fund size.</p>
   <table>
-    <thead><tr><th>Fund Size</th><th class="text-right">Homeowners</th><th class="text-right">10yr ROI</th><th class="text-right">30yr ROI</th><th class="text-right">Equity (30yr)</th></tr></thead>
+    <thead><tr><th>Fund Size</th><th class="text-right">Homeowners</th><th class="text-right">${maxHoldYears}yr ROI</th><th class="text-right">30yr ROI</th><th class="text-right">Equity (30yr)</th></tr></thead>
     <tbody>
       ${sizeSensitivity.map(r => `<tr${r.size === 10_000_000 ? ' class="bold"' : ''}>
         <td>${fmtM(r.size)}</td>

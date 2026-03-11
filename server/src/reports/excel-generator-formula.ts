@@ -1133,23 +1133,24 @@ function buildChartsSheet(wb: ExcelJS.Workbook, blended: FundYearState[]) {
   ws.getCell(3, 1).value = 'Select data below to create charts in Excel:';
   ws.getCell(3, 1).font = { italic: true, size: 10, color: { argb: 'FF888888' } };
 
-  // Mini summary for quick visual reference
-  ws.getCell(5, 1).value = 'Year 10 Summary';
+  // Mini summary for quick visual reference — use final year of blended array
+  const yrEnd = blended[maxYears - 1] || blended[blended.length - 1];
+  const yrEndLabel = maxYears;
+  ws.getCell(5, 1).value = `Year ${yrEndLabel} Summary`;
   ws.getCell(5, 1).font = SECTION_FONT;
   ws.getCell(5, 1).fill = SECTION_FILL;
   for (let c = 2; c <= 4; c++) { ws.getCell(5, c).fill = SECTION_FILL; }
 
-  const yr10 = blended[9];
   const yr30 = blended[maxYears - 1];
-  if (yr10) {
+  if (yrEnd) {
     setLabel(ws, 6, 1, 'Active Homeowners');
-    setVal(ws, 6, 2, yr10.activeHomeowners, NUM);
+    setVal(ws, 6, 2, yrEnd.activeHomeowners, NUM);
     setLabel(ws, 7, 1, 'Equity Created');
-    setVal(ws, 7, 2, yr10.totalEquityCreated, CURRENCY);
+    setVal(ws, 7, 2, yrEnd.totalEquityCreated, CURRENCY);
     setLabel(ws, 8, 1, 'Fund NAV');
-    setVal(ws, 8, 2, yr10.fundNAV, CURRENCY);
+    setVal(ws, 8, 2, yrEnd.fundNAV, CURRENCY);
     setLabel(ws, 9, 1, 'Cumulative ROI');
-    setVal(ws, 9, 2, yr10.roiCumulative, PCT2);
+    setVal(ws, 9, 2, yrEnd.roiCumulative, PCT2);
   }
 
   ws.getCell(11, 1).value = 'Year 30 Summary';

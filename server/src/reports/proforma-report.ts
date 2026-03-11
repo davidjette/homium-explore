@@ -232,8 +232,7 @@ function coverPage(data: ProformaData): string {
 function opportunityPage(data: ProformaData): string {
   const { fund, blended, affordability, result, geoLabel } = data;
   const maxHoldYears = fund.program.maxHoldYears || blended.length || 30;
-  const yr10 = blended[9];
-  const yrMax = blended[maxHoldYears - 1] || blended[blended.length - 1];
+  const yrEnd = blended[maxHoldYears - 1] || blended[blended.length - 1];
   const homeowners = result.totalHomeowners;
   const monthlySavings = affordability.pitiBeforeHomium - affordability.pitiAfterHomium;
   const fundName = fund.name || data.programName;
@@ -273,19 +272,19 @@ function opportunityPage(data: ProformaData): string {
 
         <div class="bb-metrics">
           <div class="bb-metric">
-            <div class="bb-metric-num green">${yr10 ? fmtM(yr10.totalEquityCreated) : '--'}</div>
+            <div class="bb-metric-num green">${yrEnd ? fmtM(yrEnd.totalEquityCreated) : '--'}</div>
             <div class="bb-metric-lbl">Homeowner Equity Created</div>
-            <div class="bb-metric-sub">over 10 years</div>
+            <div class="bb-metric-sub">over ${maxHoldYears} years</div>
           </div>
           <div class="bb-metric-div"></div>
           <div class="bb-metric">
-            <div class="bb-metric-num">${yrMax ? fmtX(yrMax.roiCumulative) : '--'}</div>
+            <div class="bb-metric-num">${yrEnd ? fmtX(yrEnd.roiCumulative) : '--'}</div>
             <div class="bb-metric-lbl">Fund Return</div>
             <div class="bb-metric-sub">${maxHoldYears}-year cumulative ROI</div>
           </div>
           <div class="bb-metric-div"></div>
           <div class="bb-metric">
-            <div class="bb-metric-num green">${yrMax ? fmtM(yrMax.totalEquityCreated) : '--'}</div>
+            <div class="bb-metric-num green">${yrEnd ? fmtM(yrEnd.totalEquityCreated) : '--'}</div>
             <div class="bb-metric-lbl">Total Wealth Created</div>
             <div class="bb-metric-sub">over ${maxHoldYears} years</div>
           </div>
@@ -379,7 +378,7 @@ function impactPage(data: ProformaData): string {
                 const wtdSAM = wtdHome * fund.program.homiumSAPct;
                 const wtdDP = wtdHome * fund.program.downPaymentPct;
                 const wtdMortgage = wtdHome - wtdSAM - wtdDP;
-                const yr10 = blended[9];
+                const yrEnd = blended[maxHoldYears - 1] || blended[blended.length - 1];
                 const geoCount = geoBreakdown.length;
                 return `
                   <h3 class="dr-head" style="margin-top:12px">Program Impact</h3>
@@ -391,8 +390,8 @@ function impactPage(data: ProformaData): string {
                     <tr><td>Avg SA Position</td><td class="bold">${fmt(wtdSAM, 0)}</td></tr>
                     <tr><td>Avg Down Payment</td><td class="bold">${fmt(wtdDP, 0)}</td></tr>
                     <tr><td>Avg First Mortgage</td><td class="bold">${fmt(wtdMortgage, 0)}</td></tr>
-                    ${yr10 ? `<tr><td>Yr 10 Equity Created</td><td class="bold">${fmtM(yr10.totalEquityCreated)}</td></tr>
-                    <tr><td>Yr 10 ROI</td><td class="bold">${fmtX(yr10.roiCumulative)}</td></tr>` : ''}
+                    ${yrEnd ? `<tr><td>Yr ${maxHoldYears} Equity Created</td><td class="bold">${fmtM(yrEnd.totalEquityCreated)}</td></tr>
+                    <tr><td>Yr ${maxHoldYears} ROI</td><td class="bold">${fmtX(yrEnd.roiCumulative)}</td></tr>` : ''}
                   </tbody></table>
                   <p style="font-size:11px;color:${GRAY};margin-top:8px;font-style:italic">Full detail by geography on the Geographic Distribution page.</p>`;
               }
@@ -411,7 +410,7 @@ function impactPage(data: ProformaData): string {
               <tbody>
                 ${milestones.map(i => {
                   const y = blended[i];
-                  const hl = i === 9 || i === maxHoldYears - 1;
+                  const hl = i === maxHoldYears - 1 || i === blended.length - 1;
                   return `<tr class="${hl ? 'hl-row' : ''}"><td>${y.calendarYear}</td><td>${fmtN(y.activeHomeowners)}</td><td>${fmtM(y.totalEquityCreated)}</td><td>${fmtM(y.fundNAV)}</td><td>${fmtM(y.cumulativeDistributions)}</td><td>${fmtX(y.roiCumulative)}</td></tr>`;
                 }).join('')}
               </tbody>
@@ -461,10 +460,11 @@ function chartsPage(data: ProformaData): string {
 // ── Page 5 (conditional): Geographic Distribution — multi-geo only ──
 
 function geoDistributionPage(data: ProformaData): string {
-  const { fund, result } = data;
+  const { fund, result, blended } = data;
   const geoBreakdown = result.geoBreakdown;
   if (!geoBreakdown || geoBreakdown.length < 2) return '';
 
+  const maxHoldYears = fund.program.maxHoldYears || blended.length || 30;
   const fundName = fund.name || data.programName;
   const totalHO = geoBreakdown.reduce((s, gb) => s + gb.totalHomeowners, 0);
 
@@ -477,15 +477,15 @@ function geoDistributionPage(data: ProformaData): string {
 
   // Build table rows
   const tableRows = geoBreakdown.map((gb, i) => {
-    const yr10eq = gb.blended[9]?.totalEquityCreated || 0;
-    const yr10ho = gb.blended[9]?.activeHomeowners || 0;
+    const endIdx = maxHoldYears - 1;
+    const endEq = gb.blended[endIdx]?.totalEquityCreated || 0;
     return `<tr>
       <td style="padding:10px 14px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${colors[i % colors.length]};margin-right:8px;vertical-align:middle"></span>${gb.geo.geoLabel}</td>
       <td style="padding:10px 14px;text-align:right">${fmtP(gb.geo.allocationPct, 0)}</td>
       <td style="padding:10px 14px;text-align:right">${fmt(gb.geo.medianIncome)}</td>
       <td style="padding:10px 14px;text-align:right">${fmt(gb.geo.medianHomeValue)}</td>
       <td style="padding:10px 14px;text-align:right">${fmtN(gb.totalHomeowners)}</td>
-      <td style="padding:10px 14px;text-align:right">${fmtM(yr10eq)}</td>
+      <td style="padding:10px 14px;text-align:right">${fmtM(endEq)}</td>
     </tr>`;
   }).join('');
 
@@ -525,7 +525,7 @@ function geoDistributionPage(data: ProformaData): string {
             <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Median Income</th>
             <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Median Home Value</th>
             <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Homeowners</th>
-            <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-radius:0 8px 0 0">Equity (Yr 10)</th>
+            <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-radius:0 8px 0 0">Equity (Yr ${maxHoldYears})</th>
           </tr></thead>
           <tbody>${tableRows}</tbody>
         </table>

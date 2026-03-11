@@ -246,11 +246,15 @@ router.post('/auto-populate', async (req: Request, res: Response) => {
         medianHomeValue: sr.scenario.medianHomeValue,
         affordabilityGap: sr.affordability.gapAfter,
       })),
-      blendedYr10: result.blended[9] ? {
-        equityCreated: Math.round(result.blended[9].totalEquityCreated),
-        activeHomeowners: result.blended[9].activeHomeowners,
-        roiCumulative: result.blended[9].roiCumulative,
-      } : null,
+      blendedYrEnd: (() => {
+        const endIdx = (result.fund?.program?.maxHoldYears || result.blended.length) - 1;
+        const yr = result.blended[endIdx];
+        return yr ? {
+          equityCreated: Math.round(yr.totalEquityCreated),
+          activeHomeowners: yr.activeHomeowners,
+          roiCumulative: yr.roiCumulative,
+        } : null;
+      })(),
     }));
   } catch (e: any) {
     res.status(500).json(err(e.message));
