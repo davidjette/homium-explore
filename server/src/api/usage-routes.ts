@@ -7,6 +7,7 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../db/pool';
 import { strictAuthMiddleware } from './auth';
+import { syncLeadToHubSpot, listPipelines } from '../integrations/hubspot';
 
 const router = Router();
 
@@ -58,7 +59,7 @@ router.post('/', async (req: Request, res: Response) => {
       ]
     );
 
-    // If this is a lead_submitted event, backfill prior anonymous events
+    // If this is a lead_submitted event, backfill prior anonymous events + sync to HubSpot
     if (eventType === 'lead_submitted' && leadEmail && sessionId) {
       await pool.query(
         `UPDATE usage_events
@@ -66,6 +67,30 @@ router.post('/', async (req: Request, res: Response) => {
          WHERE session_id = $4 AND lead_email IS NULL`,
         [leadEmail, leadOrg || null, leadName || null, sessionId]
       );
+
+      // Gather program data from this session's earlier events
+      const sessionEvents = await pool.query(
+        `SELECT event_data FROM usage_events
+         WHERE session_id = $1 AND event_type IN ('model_run', 'program_viewed')
+         ORDER BY created_at DESC LIMIT 1`,
+        [sessionId]
+      );
+      const programData = sessionEvents.rows[0]?.event_data || {};
+
+      // Fire-and-forget HubSpot sync (don't block response)
+      syncLeadToHubSpot(
+        {
+          email: leadEmail,
+          name: leadName || '',
+          organization: leadOrg || '',
+          role: eventData?.role,
+          state: state || eventData?.state,
+          utmSource: utmSource,
+          utmMedium: utmMedium,
+          utmCampaign: utmCampaign,
+        },
+        programData,
+      ).catch(e => console.error('[HubSpot] Async sync error:', e.message));
     }
 
     res.json({ success: true });
@@ -143,6 +168,16 @@ router.get('/sessions/:sessionId', strictAuthMiddleware, async (req: Request, re
       data: result.rows,
       meta: { count: result.rows.length, sessionId: req.params.sessionId },
     });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ── GET /api/v2/usage/hubspot/pipelines — list HubSpot deal pipelines (for setup) ──
+router.get('/hubspot/pipelines', strictAuthMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const data = await listPipelines();
+    res.json({ success: true, data });
   } catch (e: any) {
     res.status(500).json({ success: false, error: e.message });
   }

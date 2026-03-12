@@ -38,6 +38,7 @@ export function useLeadCapture() {
       email: info.email,
       name: info.name,
       organization: info.organization,
+      role: info.role,
       state: info.state,
     })
   }, [])
