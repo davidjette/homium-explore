@@ -34,8 +34,15 @@ export interface ProgramConfig {
   medianIncome?: number;    // MID tier
 }
 
+const BLOCKED_DOMAINS = ['homium.io', 'innoventcapital.com', 'test.com', 'example.com'];
+
 function isEnabled(): boolean {
   return !!(HUBSPOT_TOKEN && HUBSPOT_PIPELINE_ID && HUBSPOT_STAGE_ID);
+}
+
+function isInternalEmail(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase();
+  return BLOCKED_DOMAINS.includes(domain);
 }
 
 async function hubspotFetch(path: string, options: RequestInit = {}): Promise<any> {
@@ -247,6 +254,10 @@ export async function syncLeadToHubSpot(
     console.warn('[HubSpot] Not configured — skipping sync');
     return null;
   }
+  if (isInternalEmail(lead.email)) {
+    console.log(`[HubSpot] Skipping internal email: ${lead.email}`);
+    return null;
+  }
 
   try {
     const contactId = await upsertContact(lead);
@@ -278,6 +289,7 @@ export async function enrichDealWithProgram(
   program: ProgramConfig,
 ): Promise<void> {
   if (!isEnabled()) return;
+  if (isInternalEmail(lead.email)) return;
 
   try {
     const contactId = await upsertContact(lead);
