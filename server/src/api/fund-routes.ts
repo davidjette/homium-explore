@@ -247,7 +247,7 @@ router.post('/auto-populate', async (req: Request, res: Response) => {
         affordabilityGap: sr.affordability.gapAfter,
       })),
       blendedYrEnd: (() => {
-        const endIdx = (result.fund?.program?.maxHoldYears || result.blended.length) - 1;
+        const endIdx = result.blended.length - 1;
         const yr = result.blended[endIdx];
         return yr ? {
           equityCreated: Math.round(yr.totalEquityCreated),

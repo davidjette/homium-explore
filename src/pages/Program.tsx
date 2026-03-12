@@ -100,7 +100,7 @@ export default function Program() {
         setLoading(true)
 
         runFundModel(fundConfig).then(result => {
-          const endIdx = (result.fund?.program?.maxHoldYears || result.blended.length) - 1;
+          const endIdx = result.blended.length - 1;
           const yrEndData = result.blended[endIdx];
           setData({
             fund: result.fund,
@@ -182,8 +182,8 @@ export default function Program() {
   const { fund, totalHomeowners, blendedYrEnd, scenarios, fullResult, topOffSchedule, includeAffordabilitySensitivity, geoBreakdown } = data
   const blended = fullResult?.blended || []
   const yrEnd = blendedYrEnd
-  const maxHoldYears = fund?.program?.maxHoldYears || blended.length || 30
-  const yrMax = blended.length >= maxHoldYears ? blended[maxHoldYears - 1] : blended[blended.length - 1] || null
+  const fundLife = blended.length || 30
+  const yrMax = blended[blended.length - 1] || null
 
   // Chart data — accumulate returned capital into a running total
   let cumulativeReturns = 0
@@ -287,17 +287,17 @@ export default function Program() {
             <MetricCard
               label="Homeowners Served"
               value={fmtNumber(yrEnd?.homeownersCum || totalHomeowners)}
-              description={`Families achieving homeownership over ${maxHoldYears} years`}
+              description={`Families achieving homeownership over ${fundLife} years`}
             />
             <MetricCard
               label="Equity Created"
               value={yrEnd ? fmtDollar(yrEnd.equityCreated) : '--'}
-              description={`Total homeowner equity generated (${maxHoldYears}yr)`}
+              description={`Total homeowner equity generated (${fundLife}yr)`}
             />
             <MetricCard
               label="Fund ROI"
               value={yrEnd ? fmtMultiple(yrEnd.roiCumulative) : '--'}
-              description={`Cumulative return on invested capital (${maxHoldYears}yr)`}
+              description={`Cumulative return on invested capital (${fundLife}yr)`}
             />
             <MetricCard
               label="Monthly Savings"
@@ -317,7 +317,7 @@ export default function Program() {
                 earning {midScenario ? fmtPct(0.80) : ''} AMI across{' '}
                 <strong className="text-dark">{isMultiGeo ? `${geoBreakdown!.length} geographies in ${stateName}` : geoLabel}</strong> could
                 help <strong className="text-dark">{fmtNumber(yrEnd?.homeownersCum || totalHomeowners)} families</strong> achieve
-                homeownership over {maxHoldYears} years
+                homeownership over {fundLife} years
                 {yrEnd ? <>, creating <strong className="text-green">{fmtDollar(yrEnd.equityCreated)}</strong> in homeowner equity</> : ''}.
               </p>
               {midAffordability && (
@@ -335,7 +335,7 @@ export default function Program() {
               )}
               {yrMax && (
                 <p>
-                  Over {maxHoldYears} years, the fund is projected to generate a cumulative ROI of{' '}
+                  Over {fundLife} years, the fund is projected to generate a cumulative ROI of{' '}
                   <strong className="text-dark">{fmtMultiple(yrMax.roiCumulative)}</strong>,
                   while creating <strong className="text-green">{fmtDollar(yrMax.totalEquityCreated)}</strong>{' '}
                   in total homeowner equity.
@@ -348,7 +348,7 @@ export default function Program() {
         {/* Charts */}
         {chartData.length > 0 && (
           <Section>
-            <H2 className="mb-10 text-center">{maxHoldYears}-Year Projections</H2>
+            <H2 className="mb-10 text-center">{fundLife}-Year Projections</H2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
               {/* Equity Created */}
               <Card>
@@ -439,13 +439,13 @@ export default function Program() {
                       <th className="py-2 pr-4 font-bold text-dark">Geography</th>
                       <th className="py-2 pr-4 font-bold text-dark text-right">Allocation</th>
                       <th className="py-2 pr-4 font-bold text-dark text-right">Homeowners</th>
-                      <th className="py-2 pr-4 font-bold text-dark text-right">Equity (Yr {maxHoldYears})</th>
+                      <th className="py-2 pr-4 font-bold text-dark text-right">Equity (Yr {fundLife})</th>
                       <th className="py-2 font-bold text-dark text-right">Avg MHV</th>
                     </tr>
                   </thead>
                   <tbody>
                     {geoBreakdown.map(gb => {
-                      const endEquity = gb.blended[maxHoldYears - 1]?.totalEquityCreated || 0;
+                      const endEquity = gb.blended[gb.blended.length - 1]?.totalEquityCreated || 0;
                       return (
                         <tr key={gb.geo.geoId} className="border-b border-border/50">
                           <td className="py-2 pr-4 font-medium text-dark">{gb.geo.geoLabel}</td>

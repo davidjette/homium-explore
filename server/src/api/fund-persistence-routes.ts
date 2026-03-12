@@ -136,7 +136,7 @@ export function createFundPersistenceRoutes(fundService: FundService): Router {
         })),
         blended: {
           yrEnd: (() => {
-            const ei = (runResult.fund?.program?.maxHoldYears || runResult.blended.length) - 1;
+            const ei = runResult.blended.length - 1;
             const y = runResult.blended[ei];
             return y ? {
               equityCreated: Math.round(y.totalEquityCreated),
@@ -198,7 +198,7 @@ export function createFundPersistenceRoutes(fundService: FundService): Router {
             totalHomeowners: result.totalHomeowners,
             blended: {
               yrEnd: (() => {
-                const ei = (fund.program?.maxHoldYears || result.blended.length) - 1;
+                const ei = result.blended.length - 1;
                 const y = result.blended[ei];
                 return y ? {
                   equityCreated: Math.round(y.totalEquityCreated),
@@ -276,7 +276,7 @@ export function createFundPersistenceRoutes(fundService: FundService): Router {
           },
           keyMetrics: {
             yrEnd: (() => {
-              const ei = (fund.program?.maxHoldYears || result.blended.length) - 1;
+              const ei = result.blended.length - 1;
               const y = result.blended[ei];
               return y ? {
                 equityCreated: Math.round(y.totalEquityCreated),

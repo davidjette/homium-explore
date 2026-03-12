@@ -72,7 +72,7 @@ export interface ProgramConfig {
   homiumSAPct: number;            // Shared Appreciation % (e.g. 0.25)
   downPaymentPct: number;         // Down payment % (e.g. 0.03)
   maxFrontRatio: number;          // Max front-end DTI ratio (e.g. 0.30)
-  maxHoldYears: number;           // Model projection horizon (default 30)
+  maxHoldYears: number;           // Note term / max hold period per cohort (default 30)
   loanMax?: number;               // Program limit: max loan amount
   purchaseMax?: number;           // Program limit: max purchase price
   incomeMax?: number;             // Program limit: max qualifying income

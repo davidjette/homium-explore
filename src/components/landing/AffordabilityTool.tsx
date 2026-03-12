@@ -117,7 +117,7 @@ export default function AffordabilityTool() {
         fund: result.fund,
         totalHomeowners: result.totalHomeowners,
         blendedYrEnd: (() => {
-          const endIdx = (result.fund?.program?.maxHoldYears || result.blended.length) - 1;
+          const endIdx = result.blended.length - 1;
           const yr = result.blended[endIdx];
           return yr ? {
             equityCreated: Math.round(yr.totalEquityCreated),

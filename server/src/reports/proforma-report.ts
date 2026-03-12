@@ -231,8 +231,8 @@ function coverPage(data: ProformaData): string {
 
 function opportunityPage(data: ProformaData): string {
   const { fund, blended, affordability, result, geoLabel } = data;
-  const maxHoldYears = fund.program.maxHoldYears || blended.length || 30;
-  const yrEnd = blended[maxHoldYears - 1] || blended[blended.length - 1];
+  const fundLife = blended.length || 30;
+  const yrEnd = blended[fundLife - 1] || blended[blended.length - 1];
   const homeowners = result.totalHomeowners;
   const monthlySavings = affordability.pitiBeforeHomium - affordability.pitiAfterHomium;
   const fundName = fund.name || data.programName;
@@ -274,19 +274,19 @@ function opportunityPage(data: ProformaData): string {
           <div class="bb-metric">
             <div class="bb-metric-num green">${yrEnd ? fmtM(yrEnd.totalEquityCreated) : '--'}</div>
             <div class="bb-metric-lbl">Homeowner Equity Created</div>
-            <div class="bb-metric-sub">over ${maxHoldYears} years</div>
+            <div class="bb-metric-sub">over ${fundLife} years</div>
           </div>
           <div class="bb-metric-div"></div>
           <div class="bb-metric">
             <div class="bb-metric-num">${yrEnd ? fmtX(yrEnd.roiCumulative) : '--'}</div>
             <div class="bb-metric-lbl">Fund Return</div>
-            <div class="bb-metric-sub">${maxHoldYears}-year cumulative ROI</div>
+            <div class="bb-metric-sub">${fundLife}-year cumulative ROI</div>
           </div>
           <div class="bb-metric-div"></div>
           <div class="bb-metric">
             <div class="bb-metric-num green">${yrEnd ? fmtM(yrEnd.totalEquityCreated) : '--'}</div>
             <div class="bb-metric-lbl">Total Wealth Created</div>
-            <div class="bb-metric-sub">over ${maxHoldYears} years</div>
+            <div class="bb-metric-sub">over ${fundLife} years</div>
           </div>
         </div>
 
@@ -317,13 +317,13 @@ function impactPage(data: ProformaData): string {
   const stateCode = fund.geography?.state;
   const stateName = stateCode ? STATE_NAMES[stateCode] || geoLabel : geoLabel;
   const isMultiGeo = result.geoBreakdown && result.geoBreakdown.length > 1;
-  const maxHoldYears = fund.program.maxHoldYears || blended.length || 30;
+  const fundLife = blended.length || 30;
 
   // Adapt milestone rows to fund term
-  const allMilestones = maxHoldYears <= 5
-    ? Array.from({ length: maxHoldYears }, (_, i) => i)           // 5yr: show every year
-    : maxHoldYears <= 10
-    ? Array.from({ length: maxHoldYears }, (_, i) => i).filter(i => i % 2 === 0 || i === maxHoldYears - 1)  // 10yr: every 2 years
+  const allMilestones = fundLife <= 5
+    ? Array.from({ length: fundLife }, (_, i) => i)           // 5yr: show every year
+    : fundLife <= 10
+    ? Array.from({ length: fundLife }, (_, i) => i).filter(i => i % 2 === 0 || i === fundLife - 1)  // 10yr: every 2 years
     : [0, 2, 4, 6, 9, 14, 19, 24, 29];                           // 15+: original milestones
   const milestones = allMilestones.filter(i => i < blended.length);
 
@@ -378,7 +378,7 @@ function impactPage(data: ProformaData): string {
                 const wtdSAM = wtdHome * fund.program.homiumSAPct;
                 const wtdDP = wtdHome * fund.program.downPaymentPct;
                 const wtdMortgage = wtdHome - wtdSAM - wtdDP;
-                const yrEnd = blended[maxHoldYears - 1] || blended[blended.length - 1];
+                const yrEnd = blended[fundLife - 1] || blended[blended.length - 1];
                 const geoCount = geoBreakdown.length;
                 return `
                   <h3 class="dr-head" style="margin-top:12px">Program Impact</h3>
@@ -390,8 +390,8 @@ function impactPage(data: ProformaData): string {
                     <tr><td>Avg SA Position</td><td class="bold">${fmt(wtdSAM, 0)}</td></tr>
                     <tr><td>Avg Down Payment</td><td class="bold">${fmt(wtdDP, 0)}</td></tr>
                     <tr><td>Avg First Mortgage</td><td class="bold">${fmt(wtdMortgage, 0)}</td></tr>
-                    ${yrEnd ? `<tr><td>Yr ${maxHoldYears} Equity Created</td><td class="bold">${fmtM(yrEnd.totalEquityCreated)}</td></tr>
-                    <tr><td>Yr ${maxHoldYears} ROI</td><td class="bold">${fmtX(yrEnd.roiCumulative)}</td></tr>` : ''}
+                    ${yrEnd ? `<tr><td>Yr ${fundLife} Equity Created</td><td class="bold">${fmtM(yrEnd.totalEquityCreated)}</td></tr>
+                    <tr><td>Yr ${fundLife} ROI</td><td class="bold">${fmtX(yrEnd.roiCumulative)}</td></tr>` : ''}
                   </tbody></table>
                   <p style="font-size:11px;color:${GRAY};margin-top:8px;font-style:italic">Full detail by geography on the Geographic Distribution page.</p>`;
               }
@@ -404,13 +404,13 @@ function impactPage(data: ProformaData): string {
           </div>
 
           <div class="dr-right">
-            <h3 class="dr-head">${maxHoldYears}-Year Projections</h3>
+            <h3 class="dr-head">${fundLife}-Year Projections</h3>
             <table class="proj-table proj-table-full">
               <thead><tr><th>Year</th><th>Active HOs</th><th>Equity Created</th><th>Fund NAV</th><th>Capital Returned</th><th>ROI</th></tr></thead>
               <tbody>
                 ${milestones.map(i => {
                   const y = blended[i];
-                  const hl = i === maxHoldYears - 1 || i === blended.length - 1;
+                  const hl = i === fundLife - 1 || i === blended.length - 1;
                   return `<tr class="${hl ? 'hl-row' : ''}"><td>${y.calendarYear}</td><td>${fmtN(y.activeHomeowners)}</td><td>${fmtM(y.totalEquityCreated)}</td><td>${fmtM(y.fundNAV)}</td><td>${fmtM(y.cumulativeDistributions)}</td><td>${fmtX(y.roiCumulative)}</td></tr>`;
                 }).join('')}
               </tbody>
@@ -442,7 +442,7 @@ function chartsPage(data: ProformaData): string {
   return `
     <div class="page charts">
       <div class="page-inner">
-        <div class="sbar"><div class="sbar-l"><span class="sbar-tag">${fund.program.maxHoldYears || blended.length || 30}-Year Projections</span><span class="sbar-name">${fundName}</span></div><div class="sbar-r">${homiumWordmark(LIGHT_GRAY, 18)}</div></div>
+        <div class="sbar"><div class="sbar-l"><span class="sbar-tag">${blended.length || 30}-Year Projections</span><span class="sbar-name">${fundName}</span></div><div class="sbar-r">${homiumWordmark(LIGHT_GRAY, 18)}</div></div>
 
         <div class="charts-grid">
           <div class="chart-card">${svgAreaChart(cd.map(d => ({ x: d.year, y: d.equity })), cW, cH, GREEN, 'Homeowner Equity Created')}</div>
@@ -464,7 +464,7 @@ function geoDistributionPage(data: ProformaData): string {
   const geoBreakdown = result.geoBreakdown;
   if (!geoBreakdown || geoBreakdown.length < 2) return '';
 
-  const maxHoldYears = fund.program.maxHoldYears || blended.length || 30;
+  const fundLife = blended.length || 30;
   const fundName = fund.name || data.programName;
   const totalHO = geoBreakdown.reduce((s, gb) => s + gb.totalHomeowners, 0);
 
@@ -477,7 +477,7 @@ function geoDistributionPage(data: ProformaData): string {
 
   // Build table rows
   const tableRows = geoBreakdown.map((gb, i) => {
-    const endIdx = maxHoldYears - 1;
+    const endIdx = fundLife - 1;
     const endEq = gb.blended[endIdx]?.totalEquityCreated || 0;
     return `<tr>
       <td style="padding:10px 14px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${colors[i % colors.length]};margin-right:8px;vertical-align:middle"></span>${gb.geo.geoLabel}</td>
@@ -525,7 +525,7 @@ function geoDistributionPage(data: ProformaData): string {
             <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Median Income</th>
             <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Median Home Value</th>
             <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Homeowners</th>
-            <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-radius:0 8px 0 0">Equity (Yr ${maxHoldYears})</th>
+            <th style="padding:10px 14px;text-align:right;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border-radius:0 8px 0 0">Equity (Yr ${fundLife})</th>
           </tr></thead>
           <tbody>${tableRows}</tbody>
         </table>

@@ -55,7 +55,8 @@ export function runCohortWaterfall(
   payoffSchedule: PayoffEntry[],
   hpa: number,
   interestRate: number,
-  fundMaxYears: number = 30
+  fundMaxYears: number = 30,
+  noteTerm: number = 30
 ): CohortYearState[] {
   const states: CohortYearState[] = [];
   const monthlyRate = interestRate / 12;
@@ -68,7 +69,8 @@ export function runCohortWaterfall(
   // Calculate how many years this cohort will run (from cohort start to fund end)
   const cohortMaxYears = fundMaxYears - cohort.cohortYear + 1;
 
-  for (let cohortAge = 1; cohortAge <= Math.min(30, cohortMaxYears); cohortAge++) {
+  const noteTermYears = noteTerm;
+  for (let cohortAge = 1; cohortAge <= Math.min(noteTermYears, cohortMaxYears); cohortAge++) {
     // modelYear = fund year (not cohort age)
     const modelYear = cohort.cohortYear + cohortAge - 1;
     
@@ -100,9 +102,11 @@ export function runCohortWaterfall(
     } else {
       payoffCount = 0;
     }
-    // Note: homeowners still active at the model boundary are NOT force-exited.
-    // Their value is captured in outstandingPositionValue (mark-to-market).
-    
+    // At note term end, force-exit any remaining homeowners (handles rounding)
+    if (cohortAge === noteTermYears && cumulativeExits + payoffCount < cohort.homeownerCount) {
+      payoffCount = cohort.homeownerCount - cumulativeExits;
+    }
+
     cumulativeExits += payoffCount;
     // Payoff amount = Homium position value at time of exit × number exiting
     const payoffAmount = payoffCount * homiumPosition;

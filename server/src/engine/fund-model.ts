@@ -165,14 +165,15 @@ export function runFundModel(fund: FundConfig): FundModelResult {
   }
 
   // Single-geo path (original logic)
-  const maxYears = fund.program.maxHoldYears || 30;
+  const noteTerm = fund.program.maxHoldYears || 30;
+  const maxYears = fund.raise.reinvestNetProceeds ? 30 : noteTerm;
   const scenarioResults: ScenarioResult[] = [];
 
   for (const scenario of fund.scenarios) {
     // Resolve %AMI/%MHP to dollar values
     const resolved = resolveScenarioValues(fund, scenario);
     const legacy = toLegacyAssumptions(fund, resolved);
-    const { cohorts, cohortStates, fundResults } = runScenario(legacy, fund.payoffSchedule, maxYears);
+    const { cohorts, cohortStates, fundResults } = runScenario(legacy, fund.payoffSchedule, maxYears, noteTerm);
     const affordability = calculateAffordability(legacy);
 
     scenarioResults.push({

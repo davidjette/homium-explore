@@ -273,4 +273,87 @@ describe('Capital Recycling — Multi-Cohort Deployment', () => {
     const year30Homeowners = blended[29].totalHomeownersCum;
     expect(year30Homeowners).toBeGreaterThan(year1Homeowners * 2);  // At least 2x growth
   });
+
+  it('Short note term + reinvest = 30yr simulation with multiple cohort generations', () => {
+    const fund = buildFundConfig({
+      name: 'Test Fund - 5yr Note + Reinvest',
+      raise: {
+        totalRaise: 1_000_000,
+        annualContributionPct: 0,
+        reinvestNetProceeds: true,
+        baseYear: 2025,
+      },
+      fees: { programFeePct: 0, managementFeePct: 0 },
+      program: { homiumSAPct: 0.25, downPaymentPct: 0.03, maxFrontRatio: 0.30, maxHoldYears: 5 },
+      scenarios: [{
+        name: 'BASE',
+        weight: 1.0,
+        raiseAllocation: 1_000_000,
+        medianIncome: 98_000,
+        medianHomeValue: 440_000,
+      }],
+    });
+
+    const result = runFundModel(fund);
+    const blended = result.blended;
+    const scenario = result.scenarioResults[0];
+
+    // Fund simulation should run 30 years (not 5)
+    expect(blended.length).toBe(30);
+
+    // Multiple cohort generations should exist beyond year 5
+    const laterCohorts = scenario.cohorts.filter(c => c.cohortYear > 5);
+    expect(laterCohorts.length).toBeGreaterThan(0);
+
+    // Group cohortStates by cohortYear to check per-cohort waterfall length
+    const byCohort = new Map<number, typeof scenario.cohortStates>();
+    for (const s of scenario.cohortStates) {
+      const arr = byCohort.get(s.cohortYear) || [];
+      arr.push(s);
+      byCohort.set(s.cohortYear, arr);
+    }
+
+    // Each cohort waterfall should be at most 5 years long
+    for (const [cohortYear, states] of byCohort) {
+      expect(states.length).toBeLessThanOrEqual(5);
+    }
+
+    // All homeowners in cohorts that had a full note-term run should exit
+    for (const [cohortYear, states] of byCohort) {
+      // Only check cohorts that got their full note term (not truncated by fund end)
+      if (states.length < 5) continue;
+      const totalExited = states.reduce((s, y) => s + y.payoffCount, 0);
+      const cohort = scenario.cohorts.find(c => c.cohortYear === cohortYear);
+      if (cohort) {
+        expect(totalExited).toBe(cohort.homeownerCount);
+      }
+    }
+  });
+
+  it('Short note term + no reinvest = short simulation (backward compat)', () => {
+    const fund = buildFundConfig({
+      name: 'Test Fund - 5yr Note No Reinvest',
+      raise: {
+        totalRaise: 1_000_000,
+        annualContributionPct: 0,
+        reinvestNetProceeds: false,
+        baseYear: 2025,
+      },
+      fees: { programFeePct: 0, managementFeePct: 0 },
+      program: { homiumSAPct: 0.25, downPaymentPct: 0.03, maxFrontRatio: 0.30, maxHoldYears: 5 },
+      scenarios: [{
+        name: 'BASE',
+        weight: 1.0,
+        raiseAllocation: 1_000_000,
+        medianIncome: 98_000,
+        medianHomeValue: 440_000,
+      }],
+    });
+
+    const result = runFundModel(fund);
+    const blended = result.blended;
+
+    // Simulation should run for only 5 years (no reinvestment = note term controls duration)
+    expect(blended.length).toBe(5);
+  });
 });

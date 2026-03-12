@@ -8,7 +8,8 @@ const BASE_YEAR = 2025;
 export function runScenario(
   assumptions: ScenarioAssumptions,
   payoffSchedule: PayoffEntry[],
-  maxYears: number = 30
+  maxYears: number = 30,
+  noteTerm: number = maxYears
 ): { cohorts: Cohort[]; cohortStates: CohortYearState[]; fundResults: FundYearState[] } {
   const cohorts: Cohort[] = [];
   const allCohortStates: CohortYearState[] = [];
@@ -47,7 +48,7 @@ export function runScenario(
         availableCapital -= capitalDeployed;
 
         // Generate waterfall for this cohort (starting from its cohort year)
-        const states = runCohortWaterfall(newCohort, payoffSchedule, assumptions.utahHPA, assumptions.interestRate, maxYears);
+        const states = runCohortWaterfall(newCohort, payoffSchedule, assumptions.utahHPA, assumptions.interestRate, maxYears, noteTerm);
         allCohortStates.push(...states);
       }
     }
