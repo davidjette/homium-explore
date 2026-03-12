@@ -7,7 +7,7 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../db/pool';
 import { strictAuthMiddleware } from './auth';
-import { syncLeadToHubSpot, listPipelines } from '../integrations/hubspot';
+import { syncLeadToHubSpot, enrichDealWithProgram, extractProgramConfig, listPipelines } from '../integrations/hubspot';
 
 const router = Router();
 
@@ -68,14 +68,14 @@ router.post('/', async (req: Request, res: Response) => {
         [leadEmail, leadOrg || null, leadName || null, sessionId]
       );
 
-      // Gather program data from this session's earlier events
+      // Gather program data from this session's earlier events (may not exist yet)
       const sessionEvents = await pool.query(
         `SELECT event_data FROM usage_events
          WHERE session_id = $1 AND event_type IN ('model_run', 'program_viewed')
          ORDER BY created_at DESC LIMIT 1`,
         [sessionId]
       );
-      const programData = sessionEvents.rows[0]?.event_data || {};
+      const program = extractProgramConfig(sessionEvents.rows[0]?.event_data);
 
       // Fire-and-forget HubSpot sync (don't block response)
       syncLeadToHubSpot(
@@ -84,13 +84,42 @@ router.post('/', async (req: Request, res: Response) => {
           name: leadName || '',
           organization: leadOrg || '',
           role: eventData?.role,
-          state: state || eventData?.state,
+          state: program.state || state || eventData?.state,
           utmSource: utmSource,
           utmMedium: utmMedium,
           utmCampaign: utmCampaign,
         },
-        programData,
+        program,
       ).catch(e => console.error('[HubSpot] Async sync error:', e.message));
+    }
+
+    // If this is a program event and we already know the lead, enrich the HubSpot deal
+    if (['program_viewed', 'model_run'].includes(eventType) && sessionId) {
+      const leadRow = await pool.query(
+        `SELECT lead_email, lead_org, lead_name, utm_source, utm_medium, utm_campaign
+         FROM usage_events
+         WHERE session_id = $1 AND lead_email IS NOT NULL
+         LIMIT 1`,
+        [sessionId]
+      );
+
+      if (leadRow.rows.length > 0) {
+        const lead = leadRow.rows[0];
+        const program = extractProgramConfig(eventData);
+
+        enrichDealWithProgram(
+          {
+            email: lead.lead_email,
+            name: lead.lead_name || '',
+            organization: lead.lead_org || '',
+            state: program.state || state,
+            utmSource: lead.utm_source,
+            utmMedium: lead.utm_medium,
+            utmCampaign: lead.utm_campaign,
+          },
+          program,
+        ).catch(e => console.error('[HubSpot] Enrich error:', e.message));
+      }
     }
 
     res.json({ success: true });
