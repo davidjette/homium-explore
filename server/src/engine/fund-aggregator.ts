@@ -100,13 +100,14 @@ export function runScenario(
     const roiAnnual = prevTotalValue > 0 ? (totalValue - prevTotalValue) / prevTotalValue : 0;
     prevNAV = totalValue;
 
-    // 10. Calculate total equity created (all cohorts this year)
-    const totalEquityCreated = allCohortStates
-      .filter(s => s.modelYear === yr)
-      .reduce((sum, s) => {
-        const cohort = cohorts.find(c => c.cohortYear === s.cohortYear);
-        if (!cohort) return sum;
-        const appreciationPerHome = s.homeValue - cohort.homeValue0;
+    // 10. Calculate total equity created (cumulative — all homeowners ever served)
+    // Assumes exited homeowners reinvest equity in similar homes with similar growth
+    const totalEquityCreated = cohorts
+      .filter(c => c.cohortYear <= yr)
+      .reduce((sum, cohort) => {
+        const cohortAge = yr - cohort.cohortYear + 1;
+        const appreciatedValue = cohort.homeValue0 * Math.pow(1 + assumptions.utahHPA, cohortAge);
+        const appreciationPerHome = appreciatedValue - cohort.homeValue0;
         return sum + (appreciationPerHome * cohort.homeownerCount);
       }, 0);
 

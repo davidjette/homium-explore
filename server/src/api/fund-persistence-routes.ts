@@ -286,6 +286,15 @@ export function createFundPersistenceRoutes(fundService: FundService): Router {
                 roiCumulative: y.roiCumulative,
               } : null;
             })(),
+            yr10: result.blended[9]
+              ? {
+                  equityCreated: Math.round(result.blended[9].totalEquityCreated),
+                  fundBalance: Math.round(result.blended[9].fundBalance),
+                  activeHomeowners: result.blended[9].activeHomeowners,
+                  totalHomeownersCum: result.blended[9].totalHomeownersCum,
+                  roiCumulative: result.blended[9].roiCumulative,
+                }
+              : null,
             yr30: result.blended[29]
               ? {
                   equityCreated: Math.round(result.blended[29].totalEquityCreated),
