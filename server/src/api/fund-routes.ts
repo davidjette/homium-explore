@@ -183,6 +183,16 @@ router.post('/share-conversion', (req: Request, res: Response) => {
 
 // ── Housing Data Integration ──
 
+/** GET /api/v2/funds/housing/states — List all states (must be before /state/:abbr) */
+router.get('/housing/states', async (_req: Request, res: Response) => {
+  try {
+    const data = await getAllStates();
+    res.json(ok(data));
+  } catch (e: any) {
+    res.status(500).json(err(e.message));
+  }
+});
+
 /** GET /api/v2/funds/housing/state/:abbr — Get state housing data */
 router.get('/housing/state/:abbr', async (req: Request, res: Response) => {
   try {
@@ -262,16 +272,6 @@ router.post('/auto-populate', async (req: Request, res: Response) => {
 });
 
 // ── County & ZIP Endpoints (for Program Explorer) ──
-
-/** GET /api/v2/funds/housing/states — List all states */
-router.get('/housing/states', async (_req: Request, res: Response) => {
-  try {
-    const data = await getAllStates();
-    res.json(ok(data));
-  } catch (e: any) {
-    res.status(500).json(err(e.message));
-  }
-});
 
 /** GET /api/v2/funds/housing/state/:abbr/counties — List all counties in a state */
 router.get('/housing/state/:abbr/counties', async (req: Request, res: Response) => {
