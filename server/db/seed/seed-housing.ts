@@ -8,7 +8,7 @@
 
 import { pool } from '../../src/db/pool';
 
-const API = process.env.HOUSING_API_URL || 'https://unabashed-empathy.onrender.com';
+const API = process.env.HOUSING_API_URL || 'http://localhost:3001';
 
 async function fetchJson(url: string): Promise<any> {
   const resp = await fetch(url);
