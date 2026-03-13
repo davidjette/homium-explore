@@ -5,8 +5,8 @@ services:
     region: oregon
     plan: free
     rootDir: server
-    buildCommand: npm install --include=dev && npm run build
-    startCommand: node dist/db/migrate.js; node dist/api/server.js
+    buildCommand: NODE_ENV=development npm install && npm run build && ls -la dist/db/migrate.js dist/api/server.js
+    startCommand: ls -la dist/ && node dist/db/migrate.js && node dist/api/server.js
     envVars:
       - key: NODE_ENV
         value: production
