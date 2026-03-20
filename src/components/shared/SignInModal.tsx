@@ -22,6 +22,7 @@ export default function SignInModal({ modal = false, onClose }: SignInModalProps
     signInWithEmail,
     signUpWithEmail,
     resetPassword,
+    signOut,
   } = useAuthContext();
 
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
@@ -30,6 +31,7 @@ export default function SignInModal({ modal = false, onClose }: SignInModalProps
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
 
   const handleOAuth = async (provider: 'google' | 'microsoft') => {
     setError('');
@@ -53,9 +55,9 @@ export default function SignInModal({ modal = false, onClose }: SignInModalProps
         setMessage('Check your email for a password reset link.');
       } else if (mode === 'signup') {
         const { needsConfirmation } = await signUpWithEmail(email, password);
-        if (needsConfirmation) {
-          setMessage('Check your email to confirm your account before signing in.');
-        }
+        // Always sign out after sign-up to prevent unconfirmed session from triggering profile modal
+        await signOut().catch(() => {});
+        setConfirmationSent(true);
       } else {
         await signInWithEmail(email, password);
         onClose?.();
@@ -66,6 +68,53 @@ export default function SignInModal({ modal = false, onClose }: SignInModalProps
       setLoading(false);
     }
   };
+
+  // Full-screen confirmation after sign-up
+  if (confirmationSent) {
+    const confirmationContent = (
+      <div className="w-full max-w-sm mx-auto text-center py-4">
+        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-green/10 flex items-center justify-center">
+          <svg className="w-8 h-8 text-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h3 className="font-heading text-xl text-dark mb-2">Check your email</h3>
+        <Body className="text-lightGray mb-6">
+          We sent a confirmation link to <strong className="text-dark">{email}</strong>. Click the link in your email to activate your account, then come back and sign in.
+        </Body>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setConfirmationSent(false);
+            setMode('signin');
+            setPassword('');
+            setError('');
+            setMessage('');
+          }}
+        >
+          Back to Sign In
+        </Button>
+      </div>
+    );
+
+    if (!modal) return confirmationContent;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md mx-4 relative">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-lightGray hover:text-dark transition-colors cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          {confirmationContent}
+        </div>
+      </div>
+    );
+  }
 
   const content = (
     <div className="w-full max-w-sm mx-auto">
