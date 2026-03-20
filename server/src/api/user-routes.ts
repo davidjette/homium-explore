@@ -20,9 +20,12 @@ router.post('/profile', requireAuth, async (req: Request, res: Response) => {
     }
     const { name, organization, avatar_url, timing, funding_range, geographic_focus, program_type } = req.body;
 
+    // Auto-assign 'team' role for @homium.io emails on first sign-up
+    const defaultRole = user.email.endsWith('@homium.io') ? 'team' : 'registered';
+
     const result = await pool.query(
-      `INSERT INTO users (id, email, name, organization, avatar_url, timing, funding_range, geographic_focus, program_type)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO users (id, email, name, organization, avatar_url, timing, funding_range, geographic_focus, program_type, role_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        ON CONFLICT (id) DO UPDATE SET
          name = COALESCE(EXCLUDED.name, users.name),
          organization = COALESCE(EXCLUDED.organization, users.organization),
@@ -34,7 +37,7 @@ router.post('/profile', requireAuth, async (req: Request, res: Response) => {
          updated_at = NOW()
        RETURNING id, email, name, organization, role_type, avatar_url, timing, funding_range, geographic_focus, program_type, created_at`,
       [user.id, user.email, name || null, organization || null, avatar_url || null,
-       timing || null, funding_range || null, geographic_focus || null, program_type || null]
+       timing || null, funding_range || null, geographic_focus || null, program_type || null, defaultRole]
     );
 
     res.json({ success: true, data: result.rows[0] });
