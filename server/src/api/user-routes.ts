@@ -13,7 +13,11 @@ const router = Router();
 /** POST /api/users/profile — Create or update user profile */
 router.post('/profile', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = req.user!;
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ success: false, error: 'Authentication required' });
+      return;
+    }
     const { name, organization, avatar_url } = req.body;
 
     const result = await pool.query(
@@ -38,7 +42,11 @@ router.post('/profile', requireAuth, async (req: Request, res: Response) => {
 /** GET /api/users/me — Get current user's profile */
 router.get('/me', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = req.user!;
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ success: false, error: 'Authentication required' });
+      return;
+    }
 
     const result = await pool.query(
       `SELECT id, email, name, organization, role_type, avatar_url, created_at
