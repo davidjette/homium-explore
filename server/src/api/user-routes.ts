@@ -18,18 +18,23 @@ router.post('/profile', requireAuth, async (req: Request, res: Response) => {
       res.status(401).json({ success: false, error: 'Authentication required' });
       return;
     }
-    const { name, organization, avatar_url } = req.body;
+    const { name, organization, avatar_url, timing, funding_range, geographic_focus, program_type } = req.body;
 
     const result = await pool.query(
-      `INSERT INTO users (id, email, name, organization, avatar_url)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO users (id, email, name, organization, avatar_url, timing, funding_range, geographic_focus, program_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (id) DO UPDATE SET
          name = COALESCE(EXCLUDED.name, users.name),
          organization = COALESCE(EXCLUDED.organization, users.organization),
          avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
+         timing = COALESCE(EXCLUDED.timing, users.timing),
+         funding_range = COALESCE(EXCLUDED.funding_range, users.funding_range),
+         geographic_focus = COALESCE(EXCLUDED.geographic_focus, users.geographic_focus),
+         program_type = COALESCE(EXCLUDED.program_type, users.program_type),
          updated_at = NOW()
-       RETURNING id, email, name, organization, role_type, avatar_url, created_at`,
-      [user.id, user.email, name || null, organization || null, avatar_url || null]
+       RETURNING id, email, name, organization, role_type, avatar_url, timing, funding_range, geographic_focus, program_type, created_at`,
+      [user.id, user.email, name || null, organization || null, avatar_url || null,
+       timing || null, funding_range || null, geographic_focus || null, program_type || null]
     );
 
     res.json({ success: true, data: result.rows[0] });
@@ -49,7 +54,7 @@ router.get('/me', requireAuth, async (req: Request, res: Response) => {
     }
 
     const result = await pool.query(
-      `SELECT id, email, name, organization, role_type, avatar_url, created_at
+      `SELECT id, email, name, organization, role_type, avatar_url, timing, funding_range, geographic_focus, program_type, created_at
        FROM users WHERE id = $1`,
       [user.id]
     );

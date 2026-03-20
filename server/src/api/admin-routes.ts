@@ -46,7 +46,7 @@ router.get('/users', requireAuth, requireRole('admin'), async (req: Request, res
     const total = parseInt(countResult.rows[0].count);
 
     const usersResult = await pool.query(
-      `SELECT id, email, name, organization, role_type, avatar_url, created_at
+      `SELECT id, email, name, organization, role_type, avatar_url, timing, funding_range, geographic_focus, program_type, created_at
        FROM users ${where}
        ORDER BY created_at DESC
        LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
