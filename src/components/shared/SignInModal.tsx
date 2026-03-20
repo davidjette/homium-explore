@@ -54,7 +54,7 @@ export default function SignInModal({ modal = false, onClose }: SignInModalProps
         await resetPassword(email);
         setMessage('Check your email for a password reset link.');
       } else if (mode === 'signup') {
-        const { needsConfirmation } = await signUpWithEmail(email, password);
+        await signUpWithEmail(email, password);
         // Always sign out after sign-up to prevent unconfirmed session from triggering profile modal
         await signOut().catch(() => {});
         setConfirmationSent(true);
