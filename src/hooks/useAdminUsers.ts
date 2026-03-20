@@ -16,6 +16,10 @@ export interface AdminUser {
   organization?: string;
   role_type: string;
   avatar_url?: string;
+  timing?: string;
+  funding_range?: string;
+  geographic_focus?: string;
+  program_type?: string;
   created_at: string;
 }
 

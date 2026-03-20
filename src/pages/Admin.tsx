@@ -149,12 +149,33 @@ export default function Admin() {
   )
 }
 
+const TIMING_LABELS: Record<string, string> = {
+  immediate: 'Immediate (within 3 months)',
+  'near-term': 'Near-term (3–12 months)',
+  exploratory: 'Exploratory (12+ months)',
+}
+
+const FUNDING_LABELS: Record<string, string> = {
+  'under-5m': 'Under $5M',
+  '5m-25m': '$5M – $25M',
+  '25m-100m': '$25M – $100M',
+  '100m-plus': '$100M+',
+  unsure: 'Not sure yet',
+}
+
+const PROGRAM_LABELS: Record<string, string> = {
+  new: 'New program',
+  existing: 'Existing program',
+  research: 'Research only',
+}
+
 function UserRow({ user, isSelf, onRoleChange, onDelete }: {
   user: AdminUser
   isSelf: boolean
   onRoleChange: (userId: string, role: string) => void
   onDelete: (userId: string) => void
 }) {
+  const [expanded, setExpanded] = useState(false)
   const initials = (user.name || user.email)
     .split(' ')
     .map(w => w[0])
@@ -162,62 +183,95 @@ function UserRow({ user, isSelf, onRoleChange, onDelete }: {
     .slice(0, 2)
     .toUpperCase()
 
+  const hasIntakeData = user.timing || user.funding_range || user.geographic_focus || user.program_type
+
   return (
-    <tr className="border-b border-border/50 hover:bg-sectionAlt/50 transition-colors">
-      <td className="py-3 px-4">
-        <div className="flex items-center gap-3">
-          {user.avatar_url ? (
-            <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-green text-white flex items-center justify-center font-body text-xs font-bold">
-              {initials}
+    <>
+      <tr
+        className="border-b border-border/50 hover:bg-sectionAlt/50 transition-colors cursor-pointer"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <td className="py-3 px-4">
+          <div className="flex items-center gap-3">
+            <span className={`text-lightGray text-xs transition-transform ${expanded ? 'rotate-90' : ''}`}>&#9654;</span>
+            {user.avatar_url ? (
+              <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-green text-white flex items-center justify-center font-body text-xs font-bold">
+                {initials}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="font-body text-sm font-medium text-dark truncate">
+                {user.name || 'No name'}
+                {isSelf && <span className="text-lightGray ml-1">(you)</span>}
+              </p>
+              <p className="font-body text-xs text-lightGray truncate">{user.email}</p>
             </div>
-          )}
-          <div className="min-w-0">
-            <p className="font-body text-sm font-medium text-dark truncate">
-              {user.name || 'No name'}
-              {isSelf && <span className="text-lightGray ml-1">(you)</span>}
-            </p>
-            <p className="font-body text-xs text-lightGray truncate">{user.email}</p>
           </div>
-        </div>
-      </td>
-      <td className="py-3 px-4">
-        <span className="font-body text-sm text-gray">{user.organization || '—'}</span>
-      </td>
-      <td className="py-3 px-4">
-        <select
-          value={user.role_type}
-          onChange={e => onRoleChange(user.id, e.target.value)}
-          disabled={isSelf}
-          className={`px-2 py-1 border border-border rounded font-body text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green/30 ${
-            isSelf ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-          }`}
-        >
-          <option value="registered">Registered</option>
-          <option value="team">Team</option>
-          <option value="admin">Admin</option>
-        </select>
-      </td>
-      <td className="py-3 px-4">
-        <span className="font-body text-sm text-lightGray">
-          {new Date(user.created_at).toLocaleDateString()}
-        </span>
-      </td>
-      <td className="py-3 px-4 text-right">
-        {!isSelf && (
-          <button
-            onClick={() => {
-              if (confirm(`Delete ${user.email}? This cannot be undone.`)) {
-                onDelete(user.id)
-              }
-            }}
-            className="font-body text-xs text-red-500 hover:text-red-700 cursor-pointer"
+        </td>
+        <td className="py-3 px-4">
+          <span className="font-body text-sm text-gray">{user.organization || '—'}</span>
+        </td>
+        <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
+          <select
+            value={user.role_type}
+            onChange={e => onRoleChange(user.id, e.target.value)}
+            disabled={isSelf}
+            className={`px-2 py-1 border border-border rounded font-body text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green/30 ${
+              isSelf ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+            }`}
           >
-            Delete
-          </button>
-        )}
-      </td>
-    </tr>
+            <option value="registered">Registered</option>
+            <option value="team">Team</option>
+            <option value="admin">Admin</option>
+          </select>
+        </td>
+        <td className="py-3 px-4">
+          <span className="font-body text-sm text-lightGray">
+            {new Date(user.created_at).toLocaleDateString()}
+          </span>
+        </td>
+        <td className="py-3 px-4 text-right" onClick={e => e.stopPropagation()}>
+          {!isSelf && (
+            <button
+              onClick={() => {
+                if (confirm(`Delete ${user.email}? This cannot be undone.`)) {
+                  onDelete(user.id)
+                }
+              }}
+              className="font-body text-xs text-red-500 hover:text-red-700 cursor-pointer"
+            >
+              Delete
+            </button>
+          )}
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="bg-sectionAlt/30">
+          <td colSpan={5} className="px-4 py-4">
+            {hasIntakeData ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pl-12">
+                <DetailField label="Timing" value={user.timing ? (TIMING_LABELS[user.timing] || user.timing) : null} />
+                <DetailField label="Funding Range" value={user.funding_range ? (FUNDING_LABELS[user.funding_range] || user.funding_range) : null} />
+                <DetailField label="Geographic Focus" value={user.geographic_focus} />
+                <DetailField label="Program Type" value={user.program_type ? (PROGRAM_LABELS[user.program_type] || user.program_type) : null} />
+              </div>
+            ) : (
+              <p className="font-body text-sm text-lightGray pl-12">No program interest data provided.</p>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+function DetailField({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div>
+      <p className="font-body text-xs font-bold uppercase tracking-wider text-lightGray mb-0.5">{label}</p>
+      <p className="font-body text-sm text-dark">{value || '—'}</p>
+    </div>
   )
 }
