@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate": "tsx src/db/migrate.ts",
-    "seed": "tsx db/seed/seed.ts"
+    "seed": "tsx db/seed/seed.ts",
+    "generate:county-paths": "tsx scripts/generate-county-paths.ts",
+    "generate:fips-lookup": "tsx scripts/generate-fips-lookup.ts"
   },
   "dependencies": {
     "@sparticuz/chromium": "^143.0.4",
@@ -19,6 +21,7 @@
     "exceljs": "^4.4.0",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.3",
+    "jwks-rsa": "^4.0.1",
     "pg": "^8.13.0",
     "pptxgenjs": "^4.0.1",
     "puppeteer-core": "^24.37.5",
@@ -33,9 +36,12 @@
     "@types/node": "^22.0.0",
     "@types/pg": "^8.11.0",
     "@types/supertest": "^6.0.3",
+    "@types/topojson-client": "^3.1.5",
     "puppeteer": "^24.37.5",
     "supertest": "^7.2.2",
+    "topojson-client": "^3.1.0",
     "tsx": "^4.19.0",
+    "us-atlas": "^3.0.1",
     "vitest": "^3.0.0"
   },
   "engines": {
