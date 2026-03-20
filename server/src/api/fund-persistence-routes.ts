@@ -6,6 +6,7 @@
 import { Router, Request, Response } from 'express';
 import { FundService } from '../db/services/fund-service';
 import { runFundModel, buildFundConfig } from '../engine/fund-model';
+import { pool } from '../db/pool';
 
 export function createFundPersistenceRoutes(fundService: FundService): Router {
   const router = Router();
@@ -19,13 +20,49 @@ export function createFundPersistenceRoutes(fundService: FundService): Router {
 
   // ── Fund CRUD ──
 
-  /** GET /api/v2/funds/db — List all saved funds */
+  /** GET /api/v2/funds/db — List saved funds (filtered by ownership) */
   router.get('/db', async (req: Request, res: Response) => {
     try {
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
       const offset = parseInt(req.query.offset as string) || 0;
-      const result = await fundService.listFunds(limit, offset);
-      res.json(ok(result));
+
+      // Team/admin see all funds, registered users see only their own
+      const userRole = req.user?.role_type || 'registered';
+      if (req.user?.id && (userRole === 'team' || userRole === 'admin')) {
+        const result = await fundService.listFunds(limit, offset);
+        res.json(ok(result));
+      } else if (req.user?.id) {
+        // Filter by owner_id for registered users
+        const countResult = await pool.query(
+          'SELECT COUNT(*) as count FROM fund_configs WHERE owner_id = $1',
+          [req.user.id]
+        );
+        const total = parseInt(countResult.rows[0].count, 10);
+        const result = await pool.query(
+          `SELECT fc.id, fc.name, fc.state, fc.total_raise, fc.created_at,
+                  COUNT(fs.id) as scenario_count
+           FROM fund_configs fc
+           LEFT JOIN fund_scenarios fs ON fc.id = fs.fund_id
+           WHERE fc.owner_id = $1
+           GROUP BY fc.id
+           ORDER BY fc.created_at DESC
+           LIMIT $2 OFFSET $3`,
+          [req.user.id, limit, offset]
+        );
+        const funds = result.rows.map(row => ({
+          id: row.id,
+          name: row.name,
+          state: row.state,
+          totalRaise: parseFloat(row.total_raise),
+          scenarioCount: parseInt(row.scenario_count, 10),
+          createdAt: row.created_at,
+        }));
+        res.json(ok({ funds, total }));
+      } else {
+        // Anonymous — return all (legacy behavior)
+        const result = await fundService.listFunds(limit, offset);
+        res.json(ok(result));
+      }
     } catch (e: any) {
       res.status(500).json(err(e.message));
     }
@@ -44,6 +81,11 @@ export function createFundPersistenceRoutes(fundService: FundService): Router {
 
       // Save to DB
       const { id: fundId, fund } = await fundService.createFund(fundConfig);
+
+      // Set owner_id if authenticated
+      if (req.user?.id) {
+        await pool.query('UPDATE fund_configs SET owner_id = $1 WHERE id = $2', [req.user.id, fundId]);
+      }
 
       // Run the model
       const runResult = await Promise.resolve(runFundModel(fund));
@@ -101,10 +143,26 @@ export function createFundPersistenceRoutes(fundService: FundService): Router {
     }
   });
 
-  /** DELETE /api/v2/funds/db/:id — Delete a fund */
+  /** DELETE /api/v2/funds/db/:id — Delete a fund (ownership-checked) */
   router.delete('/db/:id', async (req: Request, res: Response) => {
     try {
       const fundId = String(req.params.id);
+
+      // Verify ownership if authenticated (team/admin can delete any)
+      if (req.user?.id) {
+        const userRole = req.user.role_type || 'registered';
+        if (userRole !== 'team' && userRole !== 'admin') {
+          const ownerCheck = await pool.query(
+            'SELECT owner_id FROM fund_configs WHERE id = $1', [fundId]
+          );
+          if (ownerCheck.rows.length > 0 && ownerCheck.rows[0].owner_id &&
+              ownerCheck.rows[0].owner_id !== req.user.id) {
+            res.status(403).json(err('You can only delete your own funds'));
+            return;
+          }
+        }
+      }
+
       await fundService.deleteFund(fundId);
       res.json(ok({ deleted: fundId }));
     } catch (e: any) {

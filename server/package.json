@@ -4,7 +4,7 @@
   "description": "Homium Fund Model API — fund simulation engine, housing data, and pro forma PDF generation",
   "main": "dist/api/server.js",
   "scripts": {
-    "dev": "tsx watch src/api/server.ts",
+    "dev": "tsx watch --env-file=.env src/api/server.ts",
     "build": "tsc",
     "prestart": "npx tsc",
     "start": "node dist/api/server.js",

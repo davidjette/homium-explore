@@ -17,6 +17,7 @@ import { sendProFormaEmail } from '../reports/email-service';
 import { generateProformaExcel } from '../reports/excel-generator';
 import { generateFormulaExcel } from '../reports/excel-generator-formula';
 import { generateProformaPptx } from '../reports/pptx-generator';
+import { requireAuth, requireRole } from './supabase-auth';
 
 const router = Router();
 
@@ -82,8 +83,8 @@ function buildProformaData(fundInput: any, programName?: string): ProformaData {
   };
 }
 
-// POST /report/email — Generate + email pro forma
-router.post('/report/email', async (req, res) => {
+// POST /report/email — Generate + email pro forma (requires auth)
+router.post('/report/email', requireAuth, async (req, res) => {
   if (generating) {
     return res.status(503).json({
       success: false,
@@ -136,8 +137,8 @@ router.post('/report/email', async (req, res) => {
   }
 });
 
-// POST /report/pdf — Generate + download pro forma PDF
-router.post('/report/pdf', async (req, res) => {
+// POST /report/pdf — Generate + download pro forma PDF (requires auth)
+router.post('/report/pdf', requireAuth, async (req, res) => {
   if (generating) {
     return res.status(503).json({
       success: false,
@@ -171,8 +172,8 @@ router.post('/report/pdf', async (req, res) => {
   }
 });
 
-// POST /report/xlsx — Generate + download pro forma Excel
-router.post('/report/xlsx', async (req, res) => {
+// POST /report/xlsx — Generate + download pro forma Excel (requires team role)
+router.post('/report/xlsx', requireRole('team'), async (req, res) => {
   const { fund, programName, useFormulas } = req.body;
   if (!fund) {
     return res.status(400).json({ success: false, error: 'fund configuration required' });
@@ -195,8 +196,8 @@ router.post('/report/xlsx', async (req, res) => {
   }
 });
 
-// POST /report/pptx — Generate + download pro forma PowerPoint
-router.post('/report/pptx', async (req, res) => {
+// POST /report/pptx — Generate + download pro forma PowerPoint (requires team role)
+router.post('/report/pptx', requireRole('team'), async (req, res) => {
   const { fund, programName, includeAffordabilitySensitivity } = req.body;
   if (!fund) {
     return res.status(400).json({ success: false, error: 'fund configuration required' });

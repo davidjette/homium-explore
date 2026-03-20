@@ -8,6 +8,7 @@ import type {
   FundConfig,
   FundModelResult,
 } from './types';
+import { supabase } from './supabase';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -18,11 +19,30 @@ interface ApiResponse<T> {
   error?: string;
 }
 
+/** Get current Supabase access token (if authenticated) */
+async function getAuthToken(): Promise<string | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`;
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options?.headers as Record<string, string> || {}),
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const resp = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers,
   });
 
   if (!resp.ok) {
@@ -113,9 +133,12 @@ export async function autoPopulate(state: string, totalRaise: number = 25_000_00
 
 export async function downloadProformaPDF(fund: FundConfig, programName?: string, includeAffordabilitySensitivity?: boolean): Promise<void> {
   const url = `${API_BASE}/v2/funds/report/pdf`;
+  const token = await getAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   const resp = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ fund, programName, includeAffordabilitySensitivity }),
   });
 
@@ -141,9 +164,12 @@ export async function downloadProformaPDF(fund: FundConfig, programName?: string
 
 export async function downloadProformaExcel(fund: FundConfig, programName?: string): Promise<void> {
   const url = `${API_BASE}/v2/funds/report/xlsx`;
+  const token = await getAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   const resp = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ fund, programName, useFormulas: true }),
   });
 
@@ -169,9 +195,12 @@ export async function downloadProformaExcel(fund: FundConfig, programName?: stri
 
 export async function downloadProformaPptx(fund: FundConfig, programName?: string, includeAffordabilitySensitivity?: boolean): Promise<void> {
   const url = `${API_BASE}/v2/funds/report/pptx`;
+  const token = await getAuthToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   const resp = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ fund, programName, includeAffordabilitySensitivity }),
   });
 

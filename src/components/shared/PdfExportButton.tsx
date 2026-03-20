@@ -3,6 +3,7 @@ import { Button } from '../../design-system/Button'
 import { downloadProformaPDF, downloadProformaPptx } from '../../lib/api'
 import { trackEvent } from '../../lib/analytics'
 import { logUsage } from '../../lib/usageLog'
+import { useAuthContext } from './AuthProvider'
 import type { FundConfig } from '../../lib/types'
 
 interface Props {
@@ -15,6 +16,7 @@ export default function PdfExportButton({ fund, programName, includeAffordabilit
   const [exportingPdf, setExportingPdf] = useState(false)
   const [exportingPptx, setExportingPptx] = useState(false)
   const [error, setError] = useState('')
+  const { isTeam } = useAuthContext()
 
   const handlePdfExport = async () => {
     setExportingPdf(true)
@@ -61,10 +63,21 @@ export default function PdfExportButton({ fund, programName, includeAffordabilit
           {exportingPdf ? 'Generating PDF...' : 'Export PDF'}
           {!exportingPdf && downloadIcon}
         </Button>
-        <Button variant="outline" onClick={handlePptxExport} disabled={exportingPptx}>
-          {exportingPptx ? 'Generating PPTX...' : 'Export PPTX'}
-          {!exportingPptx && downloadIcon}
-        </Button>
+        {isTeam ? (
+          <Button variant="outline" onClick={handlePptxExport} disabled={exportingPptx}>
+            {exportingPptx ? 'Generating PPTX...' : 'Export PPTX'}
+            {!exportingPptx && downloadIcon}
+          </Button>
+        ) : (
+          <div className="relative group inline-flex">
+            <Button variant="outline" disabled>
+              Export PPTX
+            </Button>
+            <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-dark text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              Contact Homium for access
+            </span>
+          </div>
+        )}
       </div>
       {error && (
         <p className="font-body text-xs text-red-600 max-w-[200px] text-center">{error}</p>

@@ -19,6 +19,8 @@ import { createFundPersistenceRoutes } from './fund-persistence-routes';
 import { generateReport, ReportType } from '../reports/report-engine';
 import { authMiddleware } from './auth';
 import { authRouter, jwtAuthMiddleware } from './auth-routes';
+import { supabaseAuthMiddleware } from './supabase-auth';
+import userRoutes from './user-routes';
 import reportRoutes from './report-routes';
 import usageRoutes from './usage-routes';
 
@@ -32,10 +34,16 @@ app.use('/api/auth', authRouter);
 // Usage analytics — must be before auth middleware (anonymous POST from frontend)
 app.use('/api/v2/usage', usageRoutes);
 
+// Supabase auth — permissive global middleware (sets req.user when token present)
+app.use('/api', supabaseAuthMiddleware);
+
+// User profile routes (requires Supabase auth)
+app.use('/api/users', userRoutes);
+
 // API key auth — protects write endpoints when FUND_API_KEY is set
 app.use('/api', authMiddleware);
 
-// JWT auth — protects routes when FUND_AUTH_PASSWORD is set
+// JWT auth — protects routes when FUND_AUTH_PASSWORD is set (legacy, kept for transition)
 app.use('/api', jwtAuthMiddleware);
 
 const ok = (data: any, meta: any = {}) => ({

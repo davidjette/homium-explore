@@ -6,10 +6,9 @@ import { Card, MetricCard } from '../design-system/Card'
 import { Button } from '../design-system/Button'
 import { fmtDollar, fmtNumber, fmtMultiple, fmtPct } from '../lib/api'
 import { STATE_NAMES } from '../design-system/Map'
-import { useLeadCapture } from '../hooks/useLeadCapture'
-import LeadCaptureModal from '../components/shared/LeadCaptureModal'
 import PdfExportButton from '../components/shared/PdfExportButton'
 import ExcelExportButton from '../components/shared/ExcelExportButton'
+import { useAuthContext } from '../components/shared/AuthProvider'
 import ShareButton from '../components/shared/ShareButton'
 import { trackEvent } from '../lib/analytics'
 import { logUsage } from '../lib/usageLog'
@@ -80,8 +79,8 @@ export default function Program() {
   const navigate = useNavigate()
   const [data, setData] = useState<ProgramData | null>(null)
   const [stateName, setStateName] = useState('')
-  const [stateAbbr, setStateAbbr] = useState('')
-  const { isGated, submitLead } = useLeadCapture()
+  const [, setStateAbbr] = useState('')
+  const { isTeam } = useAuthContext()
 
   const [loading, setLoading] = useState(false)
 
@@ -168,16 +167,6 @@ export default function Program() {
   )
 
   if (!data) return null
-
-  // Show lead capture gate
-  if (isGated) {
-    return (
-      <LeadCaptureModal
-        onSubmit={submitLead}
-        prefilledState={stateAbbr}
-      />
-    )
-  }
 
   const { fund, totalHomeowners, blendedYrEnd, scenarios, fullResult, topOffSchedule, includeAffordabilitySensitivity, geoBreakdown } = data
   const blended = fullResult?.blended || []
@@ -675,7 +664,18 @@ export default function Program() {
               Edit Program
             </Button>
             <PdfExportButton fund={fund} programName={programName} includeAffordabilitySensitivity={includeAffordabilitySensitivity} />
-            <ExcelExportButton fund={fund} programName={programName} />
+            {isTeam ? (
+              <ExcelExportButton fund={fund} programName={programName} />
+            ) : (
+              <div className="relative group inline-flex">
+                <Button variant="outline" disabled>
+                  Export Excel
+                </Button>
+                <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-dark text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  Contact Homium for access
+                </span>
+              </div>
+            )}
             <ShareButton fund={fund} programName={programName} />
             <Button variant="outline" onClick={() => navigate('/explore')}>
               Explore Another Market
