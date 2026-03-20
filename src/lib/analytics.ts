@@ -21,6 +21,7 @@ type EventName =
   | 'lead_form_submitted'
   | 'pdf_export'
   | 'excel_export'
+  | 'pptx_export'
   | 'cta_click'
   | 'shared_link_loaded'
 
