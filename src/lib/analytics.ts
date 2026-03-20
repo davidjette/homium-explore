@@ -6,7 +6,6 @@
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void
-    __GA_ID?: string
   }
 }
 
