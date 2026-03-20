@@ -1,18 +1,18 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
-import { LandingNav, ToolNav, Footer } from './design-system/Layout'
+import { LandingNav, ToolNav, Footer, Container } from './design-system/Layout'
 import { useAuthContext } from './components/shared/AuthProvider'
-import { Button } from './design-system/Button'
 import { H2, Body } from './design-system/Typography'
-import { Container } from './design-system/Layout'
 import ProfileSetupModal from './components/shared/ProfileSetupModal'
+import SignInModal from './components/shared/SignInModal'
 import Landing from './pages/Landing'
 import Explorer from './pages/Explorer'
 import Studio from './pages/Studio'
 import Program from './pages/Program'
 import Dashboard from './pages/Dashboard'
+import Admin from './pages/Admin'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading, signInWithGoogle } = useAuthContext()
+  const { isAuthenticated, loading } = useAuthContext()
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -29,9 +29,44 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
           <Body className="mt-3 mb-8 text-lightGray">
             Create a free account to design homeownership programs, run fund models, and export reports.
           </Body>
-          <Button onClick={signInWithGoogle}>
-            Sign in with Google
-          </Button>
+          <SignInModal />
+        </div>
+      </Container>
+    </div>
+  )
+
+  return <>{children}</>
+}
+
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isAdmin, loading } = useAuthContext()
+
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <p className="font-body text-lightGray">Loading...</p>
+    </div>
+  )
+
+  if (!isAuthenticated) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Container>
+        <div className="max-w-md mx-auto text-center">
+          <H2>Sign in to continue</H2>
+          <Body className="mt-3 mb-8 text-lightGray">Admin access required.</Body>
+          <SignInModal />
+        </div>
+      </Container>
+    </div>
+  )
+
+  if (!isAdmin) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Container>
+        <div className="max-w-md mx-auto text-center">
+          <H2>Access Denied</H2>
+          <Body className="mt-3 text-lightGray">
+            You don't have permission to view this page. Contact a Homium administrator for access.
+          </Body>
         </div>
       </Container>
     </div>
@@ -60,6 +95,9 @@ export default function App() {
           } />
           <Route path="/dashboard" element={
             <RequireAuth><Dashboard /></RequireAuth>
+          } />
+          <Route path="/admin" element={
+            <RequireAdmin><Admin /></RequireAdmin>
           } />
         </Routes>
       </main>

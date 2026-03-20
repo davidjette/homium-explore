@@ -86,6 +86,37 @@ export function useAuth() {
     if (error) throw error;
   }, []);
 
+  const signInWithMicrosoft = useCallback(async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'azure',
+      options: {
+        redirectTo: window.location.origin + (import.meta.env.BASE_URL || '/'),
+        scopes: 'email profile openid',
+      },
+    });
+    if (error) throw error;
+  }, []);
+
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  }, []);
+
+  const signUpWithEmail = useCallback(async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    // If email confirmation is required, session will be null
+    const needsConfirmation = !data.session;
+    return { needsConfirmation };
+  }, []);
+
+  const resetPassword = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + (import.meta.env.BASE_URL || '/'),
+    });
+    if (error) throw error;
+  }, []);
+
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
@@ -108,6 +139,10 @@ export function useAuth() {
     isAdmin,
     needsProfile,
     signInWithGoogle,
+    signInWithMicrosoft,
+    signInWithEmail,
+    signUpWithEmail,
+    resetPassword,
     signOut,
     fetchProfile,
   };

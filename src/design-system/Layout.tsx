@@ -2,74 +2,88 @@ import { type ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from './Button';
 import { useAuthContext } from '../components/shared/AuthProvider';
+import SignInModal from '../components/shared/SignInModal';
 
 /** Landing page nav — section anchors + tool link + sign in CTA */
 export function LandingNav() {
-  const { isAuthenticated, signInWithGoogle, signOut, profile, loading } = useAuthContext();
+  const { isAuthenticated, isAdmin, signOut, profile, loading } = useAuthContext();
+  const [showSignIn, setShowSignIn] = useState(false);
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border">
-      <div className="max-w-[1100px] mx-auto px-7 flex items-center justify-between h-16">
-        <Link to="/" className="flex items-center">
-          <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-7" />
-        </Link>
-        <div className="hidden sm:flex items-center gap-8">
-          <AnchorLink href="#programs">Programs</AnchorLink>
-          <AnchorLink href="#news">News</AnchorLink>
-          <AnchorLink href="#affordability">Affordability Tool</AnchorLink>
-          {!loading && (
-            isAuthenticated ? (
-              <UserMenu
-                name={profile?.name || profile?.email || ''}
-                avatarUrl={profile?.avatar_url}
-                onSignOut={signOut}
-              />
-            ) : (
-              <Button size="sm" onClick={signInWithGoogle}>
-                Sign In
-              </Button>
-            )
-          )}
+    <>
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border">
+        <div className="max-w-[1100px] mx-auto px-7 flex items-center justify-between h-16">
+          <Link to="/" className="flex items-center">
+            <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-7" />
+          </Link>
+          <div className="hidden sm:flex items-center gap-8">
+            <AnchorLink href="#programs">Programs</AnchorLink>
+            <AnchorLink href="#news">News</AnchorLink>
+            <AnchorLink href="#affordability">Affordability Tool</AnchorLink>
+            {!loading && (
+              isAuthenticated ? (
+                <UserMenu
+                  name={profile?.name || profile?.email || ''}
+                  avatarUrl={profile?.avatar_url}
+                  isAdmin={isAdmin}
+                  onSignOut={signOut}
+                />
+              ) : (
+                <Button size="sm" onClick={() => setShowSignIn(true)}>
+                  Sign In
+                </Button>
+              )
+            )}
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+      {showSignIn && <SignInModal modal onClose={() => setShowSignIn(false)} />}
+    </>
   );
 }
 
 /** Tool pages nav — route-based links + auth */
 export function ToolNav() {
   const { pathname } = useLocation();
-  const { isAuthenticated, signInWithGoogle, signOut, profile, loading } = useAuthContext();
+  const { isAuthenticated, isAdmin, signOut, profile, loading } = useAuthContext();
+  const [showSignIn, setShowSignIn] = useState(false);
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border">
-      <div className="max-w-[1100px] mx-auto px-7 flex items-center justify-between h-16">
-        <Link to="/" className="flex items-center">
-          <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-7" />
-        </Link>
-        <div className="hidden sm:flex items-center gap-8">
-          <RouteLink to="/explore" active={pathname === '/explore'}>Explore</RouteLink>
-          <RouteLink to="/design" active={pathname === '/design'}>Design</RouteLink>
-          <RouteLink to="/program" active={pathname === '/program'}>Program</RouteLink>
-          {isAuthenticated && (
-            <RouteLink to="/dashboard" active={pathname === '/dashboard'}>My Designs</RouteLink>
-          )}
-          {!loading && (
-            isAuthenticated ? (
-              <UserMenu
-                name={profile?.name || profile?.email || ''}
-                avatarUrl={profile?.avatar_url}
-                onSignOut={signOut}
-              />
-            ) : (
-              <Button size="sm" onClick={signInWithGoogle}>
-                Sign In
-              </Button>
-            )
-          )}
+    <>
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border">
+        <div className="max-w-[1100px] mx-auto px-7 flex items-center justify-between h-16">
+          <Link to="/" className="flex items-center">
+            <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-7" />
+          </Link>
+          <div className="hidden sm:flex items-center gap-8">
+            <RouteLink to="/explore" active={pathname === '/explore'}>Explore</RouteLink>
+            <RouteLink to="/design" active={pathname === '/design'}>Design</RouteLink>
+            <RouteLink to="/program" active={pathname === '/program'}>Program</RouteLink>
+            {isAuthenticated && (
+              <RouteLink to="/dashboard" active={pathname === '/dashboard'}>My Designs</RouteLink>
+            )}
+            {isAuthenticated && isAdmin && (
+              <RouteLink to="/admin" active={pathname === '/admin'}>Admin</RouteLink>
+            )}
+            {!loading && (
+              isAuthenticated ? (
+                <UserMenu
+                  name={profile?.name || profile?.email || ''}
+                  avatarUrl={profile?.avatar_url}
+                  isAdmin={isAdmin}
+                  onSignOut={signOut}
+                />
+              ) : (
+                <Button size="sm" onClick={() => setShowSignIn(true)}>
+                  Sign In
+                </Button>
+              )
+            )}
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+      {showSignIn && <SignInModal modal onClose={() => setShowSignIn(false)} />}
+    </>
   );
 }
 
@@ -77,7 +91,7 @@ export function ToolNav() {
 export const Nav = ToolNav;
 
 /** User avatar + dropdown menu */
-function UserMenu({ name, avatarUrl, onSignOut }: { name: string; avatarUrl?: string; onSignOut: () => void }) {
+function UserMenu({ name, avatarUrl, isAdmin, onSignOut }: { name: string; avatarUrl?: string; isAdmin?: boolean; onSignOut: () => void }) {
   const [open, setOpen] = useState(false);
   const initials = name
     .split(' ')
@@ -114,6 +128,15 @@ function UserMenu({ name, avatarUrl, onSignOut }: { name: string; avatarUrl?: st
             >
               My Designs
             </Link>
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="block px-4 py-2 font-body text-sm text-gray hover:bg-sectionAlt hover:text-dark transition-colors"
+                onClick={() => setOpen(false)}
+              >
+                Manage Users
+              </Link>
+            )}
             <button
               onClick={() => { setOpen(false); onSignOut(); }}
               className="w-full text-left px-4 py-2 font-body text-sm text-gray hover:bg-sectionAlt hover:text-dark transition-colors cursor-pointer"

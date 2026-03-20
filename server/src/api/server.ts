@@ -21,6 +21,7 @@ import { authMiddleware } from './auth';
 import { authRouter, jwtAuthMiddleware } from './auth-routes';
 import { supabaseAuthMiddleware } from './supabase-auth';
 import userRoutes from './user-routes';
+import adminRoutes from './admin-routes';
 import reportRoutes from './report-routes';
 import usageRoutes from './usage-routes';
 
@@ -39,6 +40,9 @@ app.use('/api', supabaseAuthMiddleware);
 
 // User profile routes (requires Supabase auth)
 app.use('/api/users', userRoutes);
+
+// Admin routes (requires admin role)
+app.use('/api/admin', adminRoutes);
 
 // API key auth — protects write endpoints when FUND_API_KEY is set
 app.use('/api', authMiddleware);

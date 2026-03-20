@@ -18,6 +18,10 @@ interface AuthContextType {
   isAdmin: boolean;
   needsProfile: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithMicrosoft: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
+  resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   fetchProfile: (accessToken: string) => Promise<UserProfile | null>;
 }

@@ -10,6 +10,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import jwksRsa from 'jwks-rsa';
+import { pool } from '../db/pool';
 
 const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET || '';
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
@@ -106,9 +107,21 @@ export function supabaseAuthMiddleware(req: Request, _res: Response, next: NextF
   }
 
   verifyToken(token)
-    .then((decoded) => {
+    .then(async (decoded) => {
       if (decoded) {
         req.user = extractUser(decoded);
+        // Override role_type from DB for immediate effect on role changes
+        try {
+          const result = await pool.query(
+            'SELECT role_type FROM users WHERE id = $1',
+            [req.user.id]
+          );
+          if (result.rows.length > 0) {
+            req.user.role_type = result.rows[0].role_type;
+          }
+        } catch {
+          // DB lookup failed — fall back to JWT role
+        }
       }
     })
     .catch((err) => {
