@@ -256,19 +256,19 @@ async function buildOpportunitySlide(pres: PptxGenJS, data: ProformaData, wordma
     ? `${fmtN(homeowners)} Families Could Own a Home in ${result.geoBreakdown!.length} ${stateName} Communities`
     : `${fmtN(homeowners)} Families Could Own a Home in ${stateName}`;
   slide.addText(headlineText, {
-    x: 0.5, y: 0.64, w: 9, h: 0.75,
+    x: 0.5, y: 0.90, w: 9, h: 0.75,
     fontSize: 32, fontFace: 'Taviraj', bold: false,
     color: DARK, align: 'center', lineSpacingMultiple: 1.05,
   } as any);
 
   slide.addText('A shared appreciation mortgage makes homeownership affordable\u2014and generates returns for investors.', {
-    x: 1.5, y: 1.39, w: 7, h: 0.26,
+    x: 1.5, y: 1.72, w: 7, h: 0.26,
     fontSize: 12, fontFace: 'Ubuntu',
     color: GRAY, align: 'center',
   });
 
   // Payment comparison cards
-  const cardY = 1.8;
+  const cardY = 2.08;
   // "Without Homium" card
   slide.addShape('roundRect' as any, {
     x: 0.5, y: cardY, w: 3.2, h: 1.28,
@@ -337,7 +337,7 @@ async function buildOpportunitySlide(pres: PptxGenJS, data: ProformaData, wordma
   } as any);
 
   // Dark metrics banner
-  const bannerY = 3.3;
+  const bannerY = 3.58;
   slide.addShape('roundRect' as any, {
     x: 0.5, y: bannerY, w: 9, h: 1.05,
     fill: { color: DARK },
@@ -379,7 +379,7 @@ async function buildOpportunitySlide(pres: PptxGenJS, data: ProformaData, wordma
   // Footer params
   const footText = `${fmtM(fund.raise.totalRaise)} Fund  \u00B7  ${fmtP(fund.program.homiumSAPct, 0)} Shared Appreciation Mortgage  \u00B7  ${fmtP(fund.assumptions.hpaPct, 1)} HPA  \u00B7  ${fmtP(fund.assumptions.interestRate, 1)} Rate`;
   slide.addText(footText, {
-    x: 0.5, y: 4.65, w: 9, h: 0.23,
+    x: 0.5, y: 4.93, w: 9, h: 0.23,
     fontSize: 10, fontFace: 'Ubuntu',
     color: LIGHT_GRAY, align: 'center',
   });
@@ -538,7 +538,7 @@ async function buildImpactSlide(pres: PptxGenJS, data: ProformaData, wordmarkPng
       } as any);
     } else {
       slide.addText('SCENARIOS', {
-        x: leftX, y: 3.3, w: colW, h: 0.15,
+        x: leftX, y: 3.42, w: colW, h: 0.15,
         fontSize: 8, fontFace: 'Ubuntu', bold: true, color: GREEN, letterSpacing: 2,
       } as any);
       const scHeader: PptxGenJS.TableRow = [
@@ -558,7 +558,7 @@ async function buildImpactSlide(pres: PptxGenJS, data: ProformaData, wordmarkPng
         ]);
       });
       slide.addTable(scRows, {
-        x: leftX, y: 3.5, w: colW,
+        x: leftX, y: 3.62, w: colW,
         fontSize: 8, fontFace: 'Ubuntu',
         border: { type: 'solid', pt: 0.5, color: 'F0F0EC' },
         colW: [0.8, 0.8, 1.2, 1.2],
@@ -618,7 +618,7 @@ async function buildImpactSlide(pres: PptxGenJS, data: ProformaData, wordmarkPng
     fontSize: 8, fontFace: 'Ubuntu',
     border: { type: 'solid', pt: 0.5, color: 'F0F0EC' },
     colW: [0.55, 0.7, 0.85, 0.8, 0.95, 0.55],
-    rowH: 0.23,
+    rowH: 0.38,
   } as any);
 
   addPageNumber(slide, 3);
@@ -643,7 +643,7 @@ function buildChartsSlide(pres: PptxGenJS, data: ProformaData, wordmarkPng: stri
   }));
 
   // Sample data at intervals for readable charts (~7 points)
-  const sampleInterval = Math.max(1, Math.floor(cd.length / 7));
+  const sampleInterval = Math.max(1, Math.floor(cd.length / 10));
   const sampled = cd.filter((_, i) => i % sampleInterval === 0 || i === cd.length - 1);
   const catLabels = sampled.map(d => String(d.year));
 
@@ -658,13 +658,13 @@ function buildChartsSlide(pres: PptxGenJS, data: ProformaData, wordmarkPng: stri
       x: 0.3, y: 0.64, title: 'Homeowner Equity Created',
       type: pres.ChartType.area,
       data: [{ name: 'Equity', labels: catLabels, values: sampled.map(d => d.equity) }],
-      opts: { valAxisNumFmt: '$#,##0"M"', chartColors: [GREEN], showValue: false, lineSize: 2, showLegend: false, catAxisLabelRotate: 45 },
+      opts: { valAxisNumFmt: '$#,##0"M"', chartColors: [GREEN], showValue: false, lineSize: 2, showLegend: false, catAxisLabelRotate: 0 },
     },
     {
       x: 5.1, y: 0.64, title: 'Active Homeowners',
       type: pres.ChartType.bar,
       data: [{ name: 'Homeowners', labels: catLabels, values: sampled.map(d => d.ho) }],
-      opts: { valAxisNumFmt: '#,##0', chartColors: [GREEN], showValue: false, showLegend: false, catAxisLabelRotate: 45 },
+      opts: { valAxisNumFmt: '#,##0', chartColors: [GREEN], showValue: false, showLegend: false, catAxisLabelRotate: 0 },
     },
     {
       x: 0.3, y: 2.96, title: 'Fund Value & Returns',
@@ -673,13 +673,13 @@ function buildChartsSlide(pres: PptxGenJS, data: ProformaData, wordmarkPng: stri
         { name: 'Fund Value', labels: catLabels, values: sampled.map(d => d.fv) },
         { name: 'Returned Capital', labels: catLabels, values: sampled.map(d => d.dist) },
       ],
-      opts: { valAxisNumFmt: '$#,##0"M"', chartColors: [DARK, GREEN], showValue: false, lineSize: 2, showLegend: true, legendPos: 'b', catAxisLabelRotate: 45 },
+      opts: { valAxisNumFmt: '$#,##0"M"', chartColors: [DARK, GREEN], showValue: false, lineSize: 2, showLegend: true, legendPos: 'b', catAxisLabelRotate: 0 },
     },
     {
       x: 5.1, y: 2.96, title: 'Cumulative ROI',
       type: pres.ChartType.line,
       data: [{ name: 'ROI', labels: catLabels, values: sampled.map(d => d.roi) }],
-      opts: { valAxisNumFmt: '0.0"x"', chartColors: [GREEN], showValue: false, lineSize: 2, showLegend: false, catAxisLabelRotate: 45 },
+      opts: { valAxisNumFmt: '0.0"x"', chartColors: [GREEN], showValue: false, lineSize: 2, showLegend: false, catAxisLabelRotate: 0 },
     },
   ];
 
@@ -891,7 +891,7 @@ function buildTopOffSlide(pres: PptxGenJS, data: ProformaData, wordmarkPng: stri
     chartColors: [DARK, GREEN],
     lineSize: 2,
     catAxisLabelFontSize: 7, catAxisLabelColor: GRAY,
-    catAxisLabelRotate: 45,
+    catAxisLabelRotate: 0,
     valAxisLabelFontSize: 7, valAxisLabelColor: GRAY,
     valAxisNumFmt: '$#,##0"K"',
     valGridLine: { color: BORDER, size: 0.5 },
@@ -985,12 +985,12 @@ async function buildDisclaimerSlide(pres: PptxGenJS, data: ProformaData, pageNum
 
   // Title
   slide.addText('Important Disclosures', {
-    x: 0.5, y: 0.83, w: 9, h: 0.45,
+    x: 0.5, y: 0.90, w: 9, h: 0.45,
     fontSize: 28, fontFace: 'Taviraj', bold: false, color: DARK,
   });
 
   // Two-column text — combined heading + body to eliminate gap
-  const colY = 1.35;
+  const colY = 1.50;
   const colH = 3.0;
 
   slide.addText([
@@ -1002,7 +1002,7 @@ async function buildDisclaimerSlide(pres: PptxGenJS, data: ProformaData, pageNum
     'reliability, or completeness of the information contained herein.\n\n' +
     'This material may not be reproduced, distributed, or transmitted to any third party without the prior written consent of Homium, Inc.',
     options: { fontSize: 8, fontFace: 'Ubuntu', color: '666666' } },
-  ], { x: 0.5, y: colY, w: 4.3, h: colH, lineSpacingMultiple: 1.6, valign: 'top' } as any);
+  ], { x: 0.5, y: colY, w: 4.3, h: colH, lineSpacingMultiple: 1.35, valign: 'top' } as any);
 
   slide.addText([
     { text: 'FORWARD-LOOKING STATEMENTS\n', options: { fontSize: 9, fontFace: 'Ubuntu', bold: true, color: DARK, letterSpacing: 1 } as any },
@@ -1015,7 +1015,7 @@ async function buildDisclaimerSlide(pres: PptxGenJS, data: ProformaData, pageNum
     'Investors should conduct their own independent diligence and consult with professional advisors before investing.\n\n' +
     `\u00A9 ${new Date().getFullYear()} Homium, Inc. All rights reserved.`,
     options: { fontSize: 8, fontFace: 'Ubuntu', color: '666666' } },
-  ], { x: 5.2, y: colY, w: 4.3, h: colH, lineSpacingMultiple: 1.6, valign: 'top' } as any);
+  ], { x: 5.2, y: colY, w: 4.3, h: colH, lineSpacingMultiple: 1.35, valign: 'top' } as any);
 
   // Footer
   slide.addShape('rect' as any, { x: 0.5, y: 5.25, w: 9, h: 0.01, fill: { color: DARK } });
