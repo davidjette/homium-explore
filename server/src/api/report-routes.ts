@@ -16,6 +16,7 @@ import { htmlToPdfBuffer } from '../reports/pdf-generator';
 import { sendProFormaEmail } from '../reports/email-service';
 import { generateProformaExcel } from '../reports/excel-generator';
 import { generateFormulaExcel } from '../reports/excel-generator-formula';
+import { generateProformaPptx } from '../reports/pptx-generator';
 
 const router = Router();
 
@@ -190,6 +191,29 @@ router.post('/report/xlsx', async (req, res) => {
     res.send(buffer);
   } catch (err: any) {
     console.error('Pro forma Excel error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /report/pptx — Generate + download pro forma PowerPoint
+router.post('/report/pptx', async (req, res) => {
+  const { fund, programName, includeAffordabilitySensitivity } = req.body;
+  if (!fund) {
+    return res.status(400).json({ success: false, error: 'fund configuration required' });
+  }
+
+  try {
+    const data = buildProformaData(fund, programName);
+    if (!includeAffordabilitySensitivity) data.topOff = undefined;
+    const buffer = await generateProformaPptx(data);
+    const filename = `${data.programName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '-')}-Pro-Forma.pptx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.send(buffer);
+  } catch (err: any) {
+    console.error('Pro forma PPTX error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

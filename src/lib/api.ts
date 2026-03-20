@@ -165,6 +165,34 @@ export async function downloadProformaExcel(fund: FundConfig, programName?: stri
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
+// ── Pro Forma PowerPoint ──
+
+export async function downloadProformaPptx(fund: FundConfig, programName?: string, includeAffordabilitySensitivity?: boolean): Promise<void> {
+  const url = `${API_BASE}/v2/funds/report/pptx`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fund, programName, includeAffordabilitySensitivity }),
+  });
+
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({ error: resp.statusText }));
+    throw new Error(body.error || `PPTX generation failed: ${resp.status}`);
+  }
+
+  const blob = await resp.blob();
+  const filename = resp.headers.get('Content-Disposition')?.match(/filename="(.+?)"/)?.[1]
+    || `${(programName || 'Homium-Program').replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '-')}-Pro-Forma.pptx`;
+
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+
 // ── Formatting Helpers ──
 
 export function fmtDollar(n: number, decimals = 0): string {

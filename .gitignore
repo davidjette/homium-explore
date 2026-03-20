@@ -9,4 +9,5 @@ server/node_modules/
 server/dist/
 server/.env
 server/test-output/
+server/test-reports/
 *.xlsx

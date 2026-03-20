@@ -23,7 +23,7 @@ Browser (React SPA)                   Render (Node/Express)              Neon
 
 **Frontend** is a Vite/React SPA deployed to GitHub Pages. It calls the backend API for housing data, fund modeling, and PDF generation.
 
-**Backend** is an Express API deployed to Render. It runs the fund simulation engine, queries housing data from Neon PostgreSQL, and generates 5-page landscape pro forma PDFs via Puppeteer.
+**Backend** is an Express API deployed to Render. It runs the fund simulation engine, queries housing data from Neon PostgreSQL, and generates investor-grade reports in multiple formats: PDF (Puppeteer), PowerPoint (PptxGenJS), and Excel (ExcelJS).
 
 ## Directory Structure
 
@@ -69,6 +69,7 @@ homium-explore/
 │   │   │   ├── proforma-report.ts  # 5-page HTML template (36KB)
 │   │   │   ├── report-engine.ts    # Report orchestration
 │   │   │   ├── pdf-generator.ts    # Puppeteer HTML-to-PDF
+│   │   │   ├── pptx-generator.ts   # PptxGenJS PowerPoint generator
 │   │   │   ├── email-service.ts    # Resend email wrapper
 │   │   │   └── us-map-paths.ts     # SVG path data for state map
 │   │   ├── integrations/
@@ -87,6 +88,7 @@ homium-explore/
 │   │       ├── seed.ts
 │   │       └── seed-housing.ts   # Seed county/ZIP data from external API
 │   ├── test/                   # Vitest test suite (9 files)
+│   ├── gen-test-reports.ts     # PDF/PPTX test harness (4 fund configs × 2 formats)
 │   ├── scripts/
 │   │   └── ingest-housing-data.ts  # ArcGIS XLSX → Neon ingestion
 │   ├── package.json
@@ -166,7 +168,11 @@ Key types (from `server/src/engine/types.ts`):
 - `ScenarioConfig` — Per-scenario parameters (name, weight, median income/home value)
 - `FundModelResult` — Full output (scenario results, blended 30-year projections, total homeowners)
 
-### PDF Report Pipeline
+### Report Generation Pipeline
+
+Reports are available in three formats — PDF, PowerPoint, and Excel — all generated from the same `ProformaData` object built by `report-routes.ts`.
+
+#### PDF (Puppeteer)
 
 Generates a **5–6 page landscape pro forma** PDF:
 
@@ -180,6 +186,28 @@ Generates a **5–6 page landscape pro forma** PDF:
 Pipeline: `report-routes.ts` builds fund data → `proforma-report.ts` generates self-contained HTML with inline CSS → `pdf-generator.ts` renders via Puppeteer (using `@sparticuz/chromium` on Render for serverless compatibility) → returns PDF buffer.
 
 Concurrency is limited to one PDF at a time (Puppeteer is memory-heavy on the free Render tier).
+
+#### PowerPoint (PptxGenJS)
+
+Generates a branded **PPTX deck** with the same slide structure as the PDF: cover, opportunity, detail, charts, optional affordability sensitivity, and disclaimer. Slides use Homium brand colors and layout conventions so the output is presentation-ready.
+
+Pipeline: `report-routes.ts` builds fund data → `pptx-generator.ts` constructs slides via PptxGenJS → returns `.pptx` buffer.
+
+#### Excel (ExcelJS)
+
+Generates a multi-sheet `.xlsx` workbook with scenario breakdowns, blended projections, charts data, share conversion tables, and (for multi-geo funds) per-geography tabs. Available in two modes: static values or live-formula sheets.
+
+#### Test Harness
+
+`server/gen-test-reports.ts` generates PDF + PPTX pairs across multiple fund configurations for side-by-side visual comparison. Run it against a local server:
+
+```bash
+cd server
+npx tsx src/api/server.ts &   # start server on :3001
+npx tsx gen-test-reports.ts   # generates 8 files in test-reports/
+```
+
+Test cases: single-geo small (UT $5.5M, 46 homes), single-geo large (CO $25M, 200 homes), multi-geo (3 geographies), and affordability sensitivity. Output lands in `server/test-reports/` (git-ignored).
 
 ### API Routes
 
@@ -205,6 +233,8 @@ Concurrency is limited to one PDF at a time (Puppeteer is memory-heavy on the fr
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/v2/funds/report/pdf` | Generate and download pro forma PDF |
+| POST | `/api/v2/funds/report/pptx` | Generate and download pro forma PowerPoint |
+| POST | `/api/v2/funds/report/xlsx` | Generate and download pro forma Excel |
 | POST | `/api/v2/funds/report/email` | Generate PDF and email to recipient |
 | GET | `/api/v2/funds/report/preview` | Dev: render HTML preview in browser |
 
