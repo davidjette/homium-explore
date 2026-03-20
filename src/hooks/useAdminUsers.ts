@@ -102,5 +102,29 @@ export function useAdminUsers({ search = '', role = '', page = 1 }: UseAdminUser
     }
   }, [session?.access_token, fetchUsers]);
 
-  return { users, total, totalPages, loading, error, refetch: fetchUsers, updateRole };
+  const deleteUser = useCallback(async (userId: string) => {
+    if (!session?.access_token) return;
+
+    try {
+      const resp = await fetch(`${API_BASE}/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!resp.ok) {
+        const json = await resp.json().catch(() => ({}));
+        throw new Error(json.error || 'Failed to delete user');
+      }
+
+      // Remove from local state
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      setTotal(prev => prev - 1);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete user');
+    }
+  }, [session?.access_token]);
+
+  return { users, total, totalPages, loading, error, refetch: fetchUsers, updateRole, deleteUser };
 }

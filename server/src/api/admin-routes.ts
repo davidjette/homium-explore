@@ -104,4 +104,32 @@ router.patch('/users/:id/role', requireAuth, requireRole('admin'), async (req: R
   }
 });
 
+/** DELETE /api/admin/users/:id — Delete a user */
+router.delete('/users/:id', requireAuth, requireRole('admin'), async (req: Request, res: Response) => {
+  try {
+    const targetId = req.params.id;
+
+    // Prevent self-deletion
+    if (req.user?.id === targetId) {
+      res.status(400).json({ success: false, error: 'Cannot delete your own account.' });
+      return;
+    }
+
+    // Nullify ownership on their funds so they aren't orphan-deleted
+    await pool.query('UPDATE fund_configs SET owner_id = NULL WHERE owner_id = $1', [targetId]);
+
+    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id, email', [targetId]);
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ success: false, error: 'User not found.' });
+      return;
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (e: any) {
+    console.error('Admin delete user error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 export default router;

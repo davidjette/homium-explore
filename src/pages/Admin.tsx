@@ -27,7 +27,7 @@ export default function Admin() {
     return () => clearTimeout(timer)
   }, [search])
 
-  const { users, total, totalPages, loading, error, refetch, updateRole } = useAdminUsers({
+  const { users, total, totalPages, loading, error, refetch, updateRole, deleteUser } = useAdminUsers({
     search: debouncedSearch,
     role: roleFilter,
     page,
@@ -100,6 +100,7 @@ export default function Admin() {
                       <th className="text-left py-3 px-4 font-body text-xs font-bold uppercase tracking-wider text-lightGray">Organization</th>
                       <th className="text-left py-3 px-4 font-body text-xs font-bold uppercase tracking-wider text-lightGray">Role</th>
                       <th className="text-left py-3 px-4 font-body text-xs font-bold uppercase tracking-wider text-lightGray">Joined</th>
+                      <th className="py-3 px-4"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -109,6 +110,7 @@ export default function Admin() {
                         user={user}
                         isSelf={user.id === profile?.id}
                         onRoleChange={handleRoleChange}
+                        onDelete={deleteUser}
                       />
                     ))}
                   </tbody>
@@ -147,10 +149,11 @@ export default function Admin() {
   )
 }
 
-function UserRow({ user, isSelf, onRoleChange }: {
+function UserRow({ user, isSelf, onRoleChange, onDelete }: {
   user: AdminUser
   isSelf: boolean
   onRoleChange: (userId: string, role: string) => void
+  onDelete: (userId: string) => void
 }) {
   const initials = (user.name || user.email)
     .split(' ')
@@ -200,6 +203,20 @@ function UserRow({ user, isSelf, onRoleChange }: {
         <span className="font-body text-sm text-lightGray">
           {new Date(user.created_at).toLocaleDateString()}
         </span>
+      </td>
+      <td className="py-3 px-4 text-right">
+        {!isSelf && (
+          <button
+            onClick={() => {
+              if (confirm(`Delete ${user.email}? This cannot be undone.`)) {
+                onDelete(user.id)
+              }
+            }}
+            className="font-body text-xs text-red-500 hover:text-red-700 cursor-pointer"
+          >
+            Delete
+          </button>
+        )}
       </td>
     </tr>
   )
