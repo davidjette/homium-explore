@@ -59,8 +59,8 @@ export function supabaseAuthMiddleware(req: Request, _res: Response, next: NextF
       email: decoded.email || '',
       role_type: decoded.role_type || decoded.user_metadata?.role_type || 'registered',
     };
-  } catch {
-    // Invalid token — treat as anonymous, don't block
+  } catch (err: any) {
+    console.error('JWT verification failed:', err.message);
   }
 
   next();
