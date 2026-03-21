@@ -19,7 +19,7 @@ import type { HALLoan, ProgramMeta, HALNAVStats } from './types'
 export const HAL_META: ProgramMeta = {
   id: 'hal',
   name: 'Colorado Pilot',
-  fullName: 'Homium Affordable Lending — Colorado Pilot',
+  fullName: 'Homium Equity Unlock — Colorado Pilot',
   productType: 'Home Equity',
   location: 'Colorado',
   state: 'CO',

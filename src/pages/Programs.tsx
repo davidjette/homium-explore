@@ -599,12 +599,12 @@ function SAMCollateralChart({ programId }: { programId: ProgramId }) {
   const loans = programId === 'udf' ? UDF_LOANS : THHI_LOANS
   const data = loans
     .filter((l) => l.purchasePrice > 0)
+    .sort((a, b) => b.purchasePrice - a.purchasePrice)
     .map((l, i) => ({
       label: String(i + 1),
       purchasePrice: l.purchasePrice,
       loanAmount: l.loanAmount,
     }))
-    .sort((a, b) => b.purchasePrice - a.purchasePrice)
 
   return (
     <Card>
