@@ -23,6 +23,7 @@ type EventName =
   | 'pptx_export'
   | 'cta_click'
   | 'shared_link_loaded'
+  | 'saved_fund_loaded'
 
 export function trackEvent(event: EventName, params?: Record<string, string | number | boolean>) {
   if (typeof window.gtag === 'function') {
