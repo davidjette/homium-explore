@@ -81,6 +81,8 @@ export interface ProgramMeta {
   location: string
   state: string
   partner: string | null
+  sponsors: string[] | null
+  capitalRaised: number | null
   description: string
   impactHighlight: string
   website: string | null

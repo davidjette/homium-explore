@@ -18,10 +18,12 @@ export const UDF_META: ProgramMeta = {
   location: 'Utah',
   state: 'UT',
   partner: 'Promise Partnership Utah',
+  sponsors: ['Promise Partnership Utah', 'CDCU', 'Utah DWS', 'Sorenson Impact Foundation', 'Garbett Family Foundation', 'Mark & Kathie Miller Foundation'],
+  capitalRaised: 4_100_000,
   description:
-    'The Utah Dream Fund offers Shared Appreciation Mortgages providing down payment assistance with no monthly payments. Through a partnership with Promise Partnership Utah, the program enables first-time homebuyers to purchase with as little as 3% down. Families repay the same percentage of home appreciation as their original down payment percentage, creating a sustainable, recycling capital model.',
+    'The Utah Dream Fund provides fair, innovative financing through Shared Appreciation Mortgages — enabling first-time homebuyers to purchase with as little as 3% down and no monthly principal or interest payments. Repayments reinvest directly into helping more Utah families achieve homeownership, creating a sustainable, recycling capital model.',
   impactHighlight:
-    'Serves first-time homebuyers earning up to 140% of Area Median Income, building generational wealth through homeownership across multiple Utah counties.',
+    'Serving first-time homebuyers earning up to 140% of Area Median Income across multiple Utah counties, building generational wealth through homeownership.',
   website: 'https://utahdreamfund.com',
 }
 

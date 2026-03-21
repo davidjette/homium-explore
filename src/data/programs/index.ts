@@ -62,7 +62,9 @@ export function getCrossStats() {
   const totalLoans = all.reduce((s, p) => s + p.loanCount, 0)
   const allCounties = [...new Set(all.flatMap((p) => p.counties))]
   const states = [...new Set([UDF_META.state, THHI_META.state, HAL_META.state])]
-  return { totalDeployed, totalLoans, countyCount: allCounties.length, stateCount: states.length }
+  const metas = Object.values(PROGRAM_METAS)
+  const totalRaised = metas.reduce((s, m) => s + (m.capitalRaised || 0), 0)
+  return { totalDeployed, totalLoans, countyCount: allCounties.length, stateCount: states.length, totalRaised }
 }
 
 /** HAL income distribution — counts by bracket (matches Pilot Results PDF categories) */

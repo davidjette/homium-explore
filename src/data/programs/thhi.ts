@@ -17,9 +17,11 @@ export const THHI_META: ProgramMeta = {
   productType: 'Purchase',
   location: 'Detroit, MI',
   state: 'MI',
-  partner: 'Tobias Harris (NBA)',
+  partner: 'MSHDA · Tobias Harris',
+  sponsors: ['MSHDA', 'Tobias Harris', 'Guild Mortgage'],
+  capitalRaised: 3_500_000,
   description:
-    'In partnership with NBA All-Star Tobias Harris, the THHI brings Shared Appreciation Mortgage-based homeownership to Detroit across nine priority neighborhoods. The program offers zero monthly payments with a 1:1 shared appreciation model — no interest or fees at origination. It targets essential workers: teachers, healthcare workers, public safety, and government employees.',
+    'A new path to homeownership for Detroit — no monthly payments, just a fair, sustainable way for families to build equity and stay rooted in their communities. The THHI uses a 1:1 Shared Appreciation Mortgage across nine priority neighborhoods, with program criteria aligned to MSHDA\'s MI Home Loan guidelines. It serves essential workers: teachers, healthcare workers, public safety, and government employees.',
   impactHighlight:
     'Focused on nine Detroit neighborhoods with documented equity gaps, serving essential workers earning $45,000+ and building generational wealth in historically underserved communities.',
   website: 'https://thhidetroit.com',

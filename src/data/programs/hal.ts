@@ -24,8 +24,10 @@ export const HAL_META: ProgramMeta = {
   location: 'Colorado',
   state: 'CO',
   partner: null,
+  sponsors: null,
+  capitalRaised: null,
   description:
-    'The Colorado Pilot offers cash-out second-position home equity loans to existing homeowners, addressing liquidity needs while preserving homeownership stability. All loans carry a fixed rate of 5.595% (Colorado SASF 30-year average). Borrowers have used proceeds for home improvements, HELOC refinancing, debt reduction, and educational expenses.',
+    'The Colorado Pilot provides cash-out home equity loans to existing homeowners at a fixed rate of 5.595%, helping families access their home equity for improvements, debt reduction, education, and more — while preserving homeownership stability.',
   impactHighlight:
     'Without explicit income targeting, 50% of borrowers earn under 80% AMI — demonstrating that the product naturally reaches low-to-middle-income households. Average AMI across the portfolio is 84%.',
   website: null,

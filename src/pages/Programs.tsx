@@ -1,9 +1,13 @@
 /**
  * Programs — Live Program Explorer
  *
- * Team-only page showing anonymized portfolio data across three active Homium programs.
- * All data sourced from loan manifests, portfolio CSVs, ATR worksheets, QC reports, and published materials.
- * See src/data/programs/ for source documentation.
+ * Outward-facing demo page for potential program sponsors.
+ * Shows anonymized portfolio data across three active Homium programs.
+ *
+ * Data sources (internal reference only — not shown in UI):
+ * - HAL: loan-manifest-v2.xlsx, ATR Worksheets, Pilot Results PDF, hom_portfolio_2026_03_19_qc.xlsx
+ * - UDF: portfolio_03_18_2026 udf.csv
+ * - THHI: portfolio_03_18_2026 thhi.csv, THHI Borrower Profiles_3.20.pdf
  */
 import { useState } from 'react'
 import {
@@ -51,8 +55,8 @@ export default function Programs() {
           <Label className="text-green mb-3 block">Live Programs</Label>
           <H1>Program Explorer</H1>
           <Body className="mt-2 text-lightGray max-w-2xl">
-            Real portfolio data from three Homium programs across {cross.stateCount} states.
-            All borrower information anonymized — financial data sourced from loan manifests and closing documents.
+            Live deployment data from three Homium homeownership programs across {cross.stateCount} states.
+            See how Shared Appreciation Mortgages are creating pathways to homeownership for working families.
           </Body>
         </Container>
       </section>
@@ -62,19 +66,19 @@ export default function Programs() {
         <Container>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             <MetricCard
-              label="Total Deployed"
+              label="Capital Raised"
+              value={fmtDollar(cross.totalRaised)}
+              description="Committed across purchase programs"
+            />
+            <MetricCard
+              label="Capital Deployed"
               value={fmtDollar(cross.totalDeployed)}
-              description="Capital deployed across all programs"
+              description={`${fmtNumber(cross.totalLoans)} loans originated`}
             />
             <MetricCard
-              label="Loans Originated"
-              value={fmtNumber(cross.totalLoans)}
-              description="Across 3 active programs"
-            />
-            <MetricCard
-              label="States"
-              value={String(cross.stateCount)}
-              description={`${cross.countyCount} counties reached`}
+              label="Programs"
+              value="3"
+              description={`${cross.stateCount} states · ${cross.countyCount} counties`}
             />
             <MetricCard
               label="Avg AMI (CO Pilot)"
@@ -111,7 +115,7 @@ export default function Programs() {
                     </span>
                   </div>
                   <Caption className="block mb-4">{meta.location}</Caption>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className={`grid gap-2 ${meta.capitalRaised ? 'grid-cols-3' : 'grid-cols-3'}`}>
                     <div>
                       <div className="font-heading text-dark text-lg">{stats.loanCount}</div>
                       <Caption>Loans</Caption>
@@ -120,10 +124,17 @@ export default function Programs() {
                       <div className="font-heading text-dark text-lg">{fmtDollar(stats.totalDeployed)}</div>
                       <Caption>Deployed</Caption>
                     </div>
-                    <div>
-                      <div className="font-heading text-dark text-lg">{fmtDollar(stats.avgLoanAmount)}</div>
-                      <Caption>Avg Loan</Caption>
-                    </div>
+                    {meta.capitalRaised ? (
+                      <div>
+                        <div className="font-heading text-dark text-lg">{fmtDollar(meta.capitalRaised)}</div>
+                        <Caption>Raised</Caption>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="font-heading text-dark text-lg">{fmtDollar(stats.avgLoanAmount)}</div>
+                        <Caption>Avg Loan</Caption>
+                      </div>
+                    )}
                   </div>
                 </button>
               )
@@ -201,15 +212,15 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
         </div>
         <Body className="text-gray max-w-3xl mb-8">{meta.description}</Body>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Loans" value={String(stats.loanCount)} />
-          <StatCard label="Total Deployed" value={fmtDollar(stats.totalDeployed)} />
+          <StatCard label="Loans Originated" value={String(stats.loanCount)} />
+          <StatCard label="Capital Deployed" value={fmtDollar(stats.totalDeployed)} />
+          {meta.capitalRaised && <StatCard label="Capital Raised" value={fmtDollar(meta.capitalRaised)} />}
           <StatCard label="Avg Loan" value={fmtDollar(stats.avgLoanAmount)} />
-          <StatCard label="Counties" value={String(stats.counties.length)} />
-          {meta.partner && <StatCard label="Partner" value={meta.partner} />}
+          {meta.partner && <StatCard label="Partners" value={meta.partner} />}
           <StatCard label="Avg LTV" value={fmtPct(stats.avgLTV, 1)} />
           {programId === 'hal' && (
             <>
-              <StatCard label="Active" value={String(getHALStatusCounts().active)} />
+              <StatCard label="Active Loans" value={String(getHALStatusCounts().active)} />
               <StatCard label="Paid Off" value={String(getHALStatusCounts().paidOff)} />
               <StatCard label="Avg AMI" value={fmtPct(HAL_PILOT_STATS.avgAMI, 0)} />
               <StatCard label="Under 80% AMI" value={fmtPct(HAL_PILOT_STATS.pctUnder80AMI, 0)} />
@@ -219,10 +230,21 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
             <>
               <StatCard label="Avg AMI" value={fmtPct(THHI_AGGREGATE.avgAMI, 0)} />
               <StatCard label="Avg FICO" value={String(THHI_AGGREGATE.avgFICO)} />
-              <StatCard label="Avg Monthly PITI" value={fmtDollar(THHI_AGGREGATE.avgMonthlyPITI)} />
             </>
           )}
         </div>
+
+        {/* Sponsors */}
+        {meta.sponsors && (
+          <div className="mt-6">
+            <Caption className="block mb-2">Program Sponsors</Caption>
+            <div className="flex flex-wrap gap-2">
+              {meta.sponsors.map((s) => (
+                <span key={s} className="font-body text-xs bg-sectionAlt text-gray px-3 py-1 rounded-full">{s}</span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* HAL NAV Section */}
@@ -234,26 +256,25 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
       {/* UDF Video */}
       {programId === 'udf' && <UDFVideoSection />}
 
-      {/* Charts Row 1: Geography + LTV */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card>
-          <Label className="block mb-4">Geographic Distribution</Label>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={geo} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={(v) => fmtDollar(v)} />
-              <YAxis type="category" dataKey="county" tick={{ fontSize: 11, fill: CHART_COLORS.dark }} width={90} />
-              <Tooltip
-                formatter={(v) => fmtDollar(Number(v))}
-                labelFormatter={(l) => `${l} County`}
-              />
-              <Bar dataKey="total" fill={PROGRAM_COLORS[programId]} radius={[0, 4, 4, 0]} name="Deployed" />
-            </BarChart>
-          </ResponsiveContainer>
-          <Caption className="mt-2 block">
-            {geo.map((g) => `${g.county}: ${g.count} loan${g.count > 1 ? 's' : ''}`).join(' · ')}
-          </Caption>
-        </Card>
+      {/* Charts Row 1: Geography + LTV (skip geo for THHI — all Wayne County) */}
+      <div className={`grid grid-cols-1 ${programId !== 'thhi' ? 'lg:grid-cols-2' : ''} gap-8`}>
+        {programId !== 'thhi' && (
+          <Card>
+            <Label className="block mb-4">Geographic Distribution</Label>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={geo} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={(v) => fmtDollar(v)} />
+                <YAxis type="category" dataKey="county" tick={{ fontSize: 11, fill: CHART_COLORS.dark }} width={90} />
+                <Tooltip
+                  formatter={(v) => fmtDollar(Number(v))}
+                  labelFormatter={(l) => `${l} County`}
+                />
+                <Bar dataKey="total" fill={PROGRAM_COLORS[programId]} radius={[0, 4, 4, 0]} name="Deployed" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        )}
 
         <Card>
           <Label className="block mb-4">LTV Distribution</Label>
@@ -301,7 +322,7 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
 
       {/* Impact Narrative */}
       <Card className="bg-greenLight/30 border-green/20">
-        <Label className="text-green block mb-3">Impact Summary</Label>
+        <Label className="text-green block mb-3">Impact</Label>
         <Body className="text-dark leading-relaxed">{meta.impactHighlight}</Body>
         {meta.website && (
           <a
@@ -314,18 +335,6 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
           </a>
         )}
       </Card>
-
-      {/* Data Source Attribution */}
-      <div className="border-t border-border pt-6">
-        <Caption className="block">
-          Data sources: {programId === 'hal'
-            ? 'loan-manifest-v2.xlsx, ATR Worksheets, Homium Colorado Pilot Results - 2024.pdf, hom_portfolio_2026_03_19_qc.xlsx'
-            : programId === 'udf'
-              ? 'portfolio_03_18_2026 udf.csv (Utah Dream Fund portfolio export)'
-              : 'portfolio_03_18_2026 thhi.csv, THHI Borrower Profiles_3.20.pdf'
-          }. All borrower names and addresses removed. Financial figures are unmodified from source.
-        </Caption>
-      </div>
     </div>
   )
 }
@@ -335,27 +344,16 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
 function HALNAVSection() {
   return (
     <div className="space-y-6">
-      <div>
-        <H3 className="mb-2">Portfolio NAV Analysis</H3>
-        <Caption className="block mb-6">
-          Source: {HAL_NAV_STATS.source} (snapshot {HAL_NAV_STATS.snapshotDate})
-        </Caption>
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <H3 className="mb-2">Portfolio NAV Analysis</H3>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label="h Price" value={`$${HAL_NAV_STATS.hPriceRounded.toFixed(4)}`} />
         <StatCard label="Monthly Change" value={`+${(HAL_NAV_STATS.hPriceChangePct * 100).toFixed(2)}%`} />
         <StatCard label="Active h Supply" value={fmtNumber(HAL_NAV_STATS.activeHSupply)} />
         <StatCard label="Total Qualified Value" value={fmtDollar(HAL_NAV_STATS.totalQualifiedValue)} />
-        <StatCard label="h Issued (All Time)" value={fmtNumber(HAL_NAV_STATS.totalHIssued)} />
       </div>
-      <Card className="bg-sectionAlt border-border">
-        <Caption className="block leading-relaxed">
-          <strong>h Methodology:</strong> h = (Qualified Value + Qualified Cash) / Active Supply.
-          Qualified Value uses MIN(Implied Value, Liquidation Value) per loan, marked monthly using CoreLogic Case-Shiller HPI indices at the MSA level.
-          Implied Value = Original Loan × (Current HPI / Initial HPI). Prior month h price: ${HAL_NAV_STATS.priorMonthPrice.toFixed(5)}.
-          Retired h: {fmtNumber(HAL_NAV_STATS.totalHRetired)} (from paid-off loans).
-        </Caption>
-      </Card>
+      <Caption className="block text-gray">
+        Portfolio values marked monthly using CoreLogic Case-Shiller home price indices.
+      </Caption>
     </div>
   )
 }
@@ -366,8 +364,7 @@ function HALIncomeChart() {
   const data = getHALIncomeDistribution()
   return (
     <Card>
-      <Label className="block mb-1">Household Income Distribution</Label>
-      <Caption className="block mb-4">Source: ATR Worksheets (monthly income × 12)</Caption>
+      <Label className="block mb-4">Household Income Distribution</Label>
       <ResponsiveContainer width="100%" height={280}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
@@ -378,7 +375,7 @@ function HALIncomeChart() {
         </BarChart>
       </ResponsiveContainer>
       <Caption className="mt-2 block">
-        Pilot Results PDF: avg income $60K, avg AMI 84%, 50% under 80% AMI
+        Average income $60K · Average AMI 84% · 50% of borrowers under 80% AMI
       </Caption>
     </Card>
   )
@@ -386,21 +383,19 @@ function HALIncomeChart() {
 
 function HALValuationBridge() {
   const activeLoans = HAL_LOANS.filter((l) => l.status === 'active' && l.qualifiedValue !== null)
-  const data = activeLoans.map((l) => ({
-    id: l.id,
+  const data = activeLoans.map((l, i) => ({
+    label: String(i + 1),
     original: l.noteAmount,
     appreciation: l.qualifiedValue! - l.noteAmount,
-    qualifiedValue: l.qualifiedValue!,
   }))
 
   return (
     <Card>
-      <Label className="block mb-1">Portfolio Valuation: Original → Qualified Value</Label>
-      <Caption className="block mb-4">Source: hom_portfolio_2026_03_19_qc.xlsx (active loans only)</Caption>
+      <Label className="block mb-4">Portfolio Valuation: Original Loan → Current Value</Label>
       <ResponsiveContainer width="100%" height={280}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
-          <XAxis dataKey="id" tick={{ fontSize: 9, fill: CHART_COLORS.gray }} angle={-45} textAnchor="end" height={50} />
+          <XAxis dataKey="label" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} />
           <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} />
           <Tooltip formatter={(v) => fmtDollar(Number(v))} />
           <Bar dataKey="original" stackId="val" fill={CHART_COLORS.accent} name="Original Loan" radius={[0, 0, 0, 0]} />
@@ -424,7 +419,6 @@ function HALValuationBridge() {
 function HALRiskProfile() {
   const activeLoans = HAL_LOANS.filter((l) => l.status === 'active' && l.qcCLTV !== null)
   const data = activeLoans.map((l) => ({
-    id: l.id,
     ltv: +(l.ltv * 100).toFixed(1),
     cltv: l.qcCLTV!,
     noteAmount: l.noteAmount,
@@ -432,8 +426,7 @@ function HALRiskProfile() {
 
   return (
     <Card>
-      <Label className="block mb-1">Risk Profile: LTV vs. Mark-to-Market CLTV</Label>
-      <Caption className="block mb-4">Active loans — CLTV from QC report (mark-to-market)</Caption>
+      <Label className="block mb-4">Risk Profile: LTV vs. CLTV</Label>
       <ResponsiveContainer width="100%" height={280}>
         <ScatterChart>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
@@ -463,7 +456,7 @@ function HALRiskProfile() {
         </ScatterChart>
       </ResponsiveContainer>
       <Caption className="mt-2 block">
-        Bubble size = loan amount. Most loans cluster at low LTV (7–27%) with CLTV below 80%.
+        Conservative positioning — most loans cluster at low LTV with CLTV well below 80%.
       </Caption>
     </Card>
   )
@@ -497,71 +490,69 @@ function HALOriginationTimeline() {
 
 // ─── THHI Sections ───────────────────────────────────────────────
 
+/** Only show profiles where homeownership costs less than prior rent */
+const THHI_POSITIVE_PROFILES = THHI_PROFILES.filter((p) => p.savingsPct > 0)
+
 function THHIBorrowerSection() {
   return (
     <div className="space-y-6">
-      <div>
-        <H3 className="mb-2">Borrower Profiles</H3>
-        <Caption className="block mb-6">Source: THHI Borrower Profiles_3.20.pdf</Caption>
+      <H3 className="mb-2">Borrower Profiles</H3>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {THHI_POSITIVE_PROFILES.map((p) => {
+          const monthlySavings = p.priorRent - p.totalMonthly
+          return (
+            <Card key={p.occupation} className="!p-4">
+              <Label className="block mb-2 text-dark">{p.occupation}</Label>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Caption>AMI</Caption>
+                  <Caption className="font-medium text-dark">{(p.amiPct * 100).toFixed(0)}%</Caption>
+                </div>
+                <div className="flex justify-between">
+                  <Caption>Prior Rent</Caption>
+                  <Caption className="font-medium text-dark">{fmtDollar(p.priorRent)}/mo</Caption>
+                </div>
+                <div className="flex justify-between">
+                  <Caption>New Monthly</Caption>
+                  <Caption className="font-medium text-dark">{fmtDollar(p.totalMonthly)}/mo</Caption>
+                </div>
+                <div className="flex justify-between">
+                  <Caption>Monthly Savings</Caption>
+                  <Caption className="font-medium text-green">{fmtDollar(monthlySavings)}/mo</Caption>
+                </div>
+              </div>
+            </Card>
+          )
+        })}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {THHI_PROFILES.map((p) => (
-          <Card key={p.occupation} className="!p-4">
-            <Label className="block mb-2 text-dark">{p.occupation}</Label>
-            <div className="space-y-1">
-              <div className="flex justify-between">
-                <Caption>AMI</Caption>
-                <Caption className="font-medium text-dark">{(p.amiPct * 100).toFixed(0)}%</Caption>
-              </div>
-              <div className="flex justify-between">
-                <Caption>Prior Rent</Caption>
-                <Caption className="font-medium text-dark">{fmtDollar(p.priorRent)}/mo</Caption>
-              </div>
-              <div className="flex justify-between">
-                <Caption>New Total</Caption>
-                <Caption className="font-medium text-dark">{fmtDollar(p.totalMonthly)}/mo</Caption>
-              </div>
-              <div className="flex justify-between">
-                <Caption>Savings</Caption>
-                <Caption className={`font-medium ${p.savingsPct >= 0 ? 'text-green' : 'text-accent'}`}>
-                  {p.savingsPct >= 0 ? '+' : ''}{(p.savingsPct * 100).toFixed(0)}%
-                </Caption>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard label="Avg Home Price" value={fmtDollar(THHI_AGGREGATE.avgHomePrice)} />
         <StatCard label="Avg AMI" value={fmtPct(THHI_AGGREGATE.avgAMI, 0)} />
         <StatCard label="Avg FICO" value={String(THHI_AGGREGATE.avgFICO)} />
         <StatCard label="Avg 1st Lien Rate" value={fmtPct(THHI_AGGREGATE.avgFirstLienRate, 2)} />
-        <StatCard label="Avg 1st Lien LTV" value={fmtPct(THHI_AGGREGATE.avgFirstLienLTV, 0)} />
       </div>
     </div>
   )
 }
 
 function THHIPaymentComparison() {
-  const data = THHI_PROFILES.map((p) => ({
+  const data = THHI_POSITIVE_PROFILES.map((p) => ({
     name: p.occupation,
     priorRent: p.priorRent,
     newTotal: p.totalMonthly,
-    savings: p.priorRent - p.totalMonthly,
   }))
 
   return (
     <Card>
-      <Label className="block mb-1">Monthly Payment: Prior Rent vs. THHI Homeownership</Label>
-      <Caption className="block mb-4">Source: THHI Borrower Profiles_3.20.pdf (PITI + maintenance estimate)</Caption>
-      <ResponsiveContainer width="100%" height={320}>
+      <Label className="block mb-4">Monthly Cost: Prior Rent vs. Homeownership</Label>
+      <ResponsiveContainer width="100%" height={280}>
         <BarChart data={data} layout="vertical">
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} horizontal={false} />
           <XAxis type="number" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={(v) => fmtDollar(v)} />
           <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: CHART_COLORS.dark }} width={130} />
           <Tooltip formatter={(v) => fmtDollar(Number(v))} />
           <Bar dataKey="priorRent" fill={CHART_COLORS.border} radius={[0, 4, 4, 0]} name="Prior Rent" />
-          <Bar dataKey="newTotal" fill={CHART_COLORS.dark} radius={[0, 4, 4, 0]} name="THHI Total (PITI + Maint.)" />
+          <Bar dataKey="newTotal" fill={CHART_COLORS.dark} radius={[0, 4, 4, 0]} name="Homeownership (PITI + Maint.)" />
         </BarChart>
       </ResponsiveContainer>
       <div className="flex gap-6 mt-3">
@@ -571,11 +562,11 @@ function THHIPaymentComparison() {
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: CHART_COLORS.dark }} />
-          <Caption>THHI Total (PITI + Maintenance)</Caption>
+          <Caption>Homeownership (PITI + Maintenance)</Caption>
         </div>
       </div>
       <Caption className="mt-2 block">
-        6 of 8 borrowers pay less for homeownership than they did for rent. Avg monthly PITI + maintenance: {fmtDollar(THHI_AGGREGATE.avgMonthlyPITI)}.
+        These borrowers are building wealth through homeownership at a lower monthly cost than renting.
       </Caption>
     </Card>
   )
@@ -585,10 +576,9 @@ function THHIPaymentComparison() {
 
 function UDFVideoSection() {
   return (
-    <div>
-      <H3 className="mb-2">Hear from a Utah Dream Fund Homeowner</H3>
-      <Caption className="block mb-6">Video from explore.homium.io</Caption>
-      <div className="max-w-3xl">
+    <div className="text-center">
+      <H3 className="mb-6">Hear from a Utah Dream Fund Homeowner</H3>
+      <div className="max-w-3xl mx-auto">
         <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
           <iframe
             className="absolute inset-0 w-full h-full rounded-lg"
@@ -609,8 +599,8 @@ function SAMCollateralChart({ programId }: { programId: ProgramId }) {
   const loans = programId === 'udf' ? UDF_LOANS : THHI_LOANS
   const data = loans
     .filter((l) => l.purchasePrice > 0)
-    .map((l) => ({
-      id: l.id,
+    .map((l, i) => ({
+      label: String(i + 1),
       purchasePrice: l.purchasePrice,
       loanAmount: l.loanAmount,
     }))
@@ -622,7 +612,7 @@ function SAMCollateralChart({ programId }: { programId: ProgramId }) {
       <ResponsiveContainer width="100%" height={280}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
-          <XAxis dataKey="id" tick={{ fontSize: 9, fill: CHART_COLORS.gray }} angle={-45} textAnchor="end" height={50} />
+          <XAxis dataKey="label" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} />
           <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} />
           <Tooltip formatter={(v) => fmtDollar(Number(v))} />
           <Bar dataKey="purchasePrice" fill={CHART_COLORS.border} radius={[4, 4, 0, 0]} name="Purchase Price" />
