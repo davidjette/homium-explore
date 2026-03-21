@@ -129,6 +129,19 @@ export async function autoPopulate(state: string, totalRaise: number = 25_000_00
   });
 }
 
+// ── Saved Funds ──
+
+export async function fetchFund(fundId: string): Promise<{ fund: FundConfig; latestRun: any }> {
+  return apiFetch(`/v2/funds/db/${fundId}`);
+}
+
+export async function updateFund(fundId: string, config: FundConfig): Promise<any> {
+  return apiFetch(`/v2/funds/db/${fundId}`, {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  });
+}
+
 // ── Pro Forma PDF ──
 
 export async function downloadProformaPDF(fund: FundConfig, programName?: string, includeAffordabilitySensitivity?: boolean): Promise<void> {

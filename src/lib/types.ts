@@ -267,6 +267,42 @@ export interface WizardState {
   useOverrides?: boolean;
 }
 
+/** Convert a persisted FundConfig back into WizardState for editing */
+export function fundConfigToWizardState(fund: FundConfig): WizardState {
+  return {
+    ...DEFAULT_WIZARD_STATE,
+    fundName: fund.name || '',
+    state: fund.geography?.state || '',
+    stateName: '', // Will be populated by useQuery hooks when state is set
+    county: fund.geography?.county,
+    zipCodes: fund.geography?.zipCodes,
+    zip: fund.geography?.zipCodes?.[0],
+    marketLabel: fund.geography?.label || '',
+    marketData: { medianIncome: 0, medianHomeValue: 0, medianRent: 0, population: 0 },
+    // Borrower — these wizard-only fields use defaults since they aren't persisted
+    targetAMIPct: 0.80,
+    targetHomePricePct: 1.0,
+    interestRate: fund.assumptions?.interestRate ?? 0.07,
+    hpaPct: fund.assumptions?.hpaPct ?? 0.05,
+    wageGrowthPct: fund.assumptions?.wageGrowthPct ?? 0.03,
+    // Program
+    homiumSAPct: fund.program?.homiumSAPct ?? 0.20,
+    downPaymentPct: fund.program?.downPaymentPct ?? 0.03,
+    programFeePct: fund.fees?.programFeePct ?? 0.05,
+    maxHoldYears: fund.program?.maxHoldYears ?? 30,
+    // Fund
+    payoffPeakYear: 12,
+    payoffConcentration: 0.5,
+    totalRaise: fund.raise?.totalRaise ?? 25_000_000,
+    managementFeePct: fund.fees?.managementFeePct ?? 0.005,
+    reinvestProceeds: fund.raise?.reinvestNetProceeds ?? true,
+    includeAffordabilitySensitivity: false,
+    fixedHomeCount: fund.program?.fixedHomeCount,
+    scenarios: fund.scenarios || [],
+    geoAllocations: fund.geography?.allocations,
+  };
+}
+
 export const DEFAULT_WIZARD_STATE: WizardState = {
   fundName: '',
   state: '',

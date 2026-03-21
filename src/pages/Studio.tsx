@@ -9,12 +9,13 @@ import { Select } from '../design-system/Select'
 import { STATE_NAMES } from '../design-system/Map'
 import {
   fetchStateData, fetchCountiesByState, fetchZipsByState,
-  runFundModel, computeSmartDefaults, fmtDollar, fmtPct
+  runFundModel, computeSmartDefaults, fmtDollar, fmtPct,
+  fetchFund, updateFund
 } from '../lib/api'
 import { trackEvent } from '../lib/analytics'
 import { logUsage } from '../lib/usageLog'
 import type { WizardState, FundConfig, ScenarioConfig, GeoAllocation } from '../lib/types'
-import { DEFAULT_WIZARD_STATE } from '../lib/types'
+import { DEFAULT_WIZARD_STATE, fundConfigToWizardState } from '../lib/types'
 import { generatePayoffSchedule, PAYOFF_PRESETS } from '../lib/payoff'
 
 const SORTED_STATES = Object.entries(STATE_NAMES)
@@ -30,7 +31,15 @@ const STEPS = [
 export default function Studio() {
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
+  const [editingFundId, setEditingFundId] = useState<string | null>(() => {
+    return new URLSearchParams(window.location.search).get('fundId')
+  })
+  const [loadingFund, setLoadingFund] = useState(!!new URLSearchParams(window.location.search).get('fundId'))
   const [wizard, setWizard] = useState<WizardState>(() => {
+    // If loading a saved fund, start with defaults — useEffect will populate
+    if (new URLSearchParams(window.location.search).get('fundId')) {
+      return DEFAULT_WIZARD_STATE
+    }
     // Pre-fill from URL params (e.g. /design?state=UT&county=Salt+Lake&zip=84104&name=SLC+Program)
     const params = new URLSearchParams(window.location.search)
     const urlState = params.get('state')
@@ -60,6 +69,22 @@ export default function Studio() {
     return DEFAULT_WIZARD_STATE
   })
   const [isRunning, setIsRunning] = useState(false)
+
+  // Load saved fund when editing via ?fundId=
+  useEffect(() => {
+    if (!editingFundId) return
+    setLoadingFund(true)
+    fetchFund(editingFundId)
+      .then(({ fund }) => {
+        setWizard(fundConfigToWizardState(fund))
+        setLoadingFund(false)
+      })
+      .catch(err => {
+        console.error('Failed to load fund:', err)
+        setLoadingFund(false)
+        setEditingFundId(null)
+      })
+  }, [editingFundId])
 
   const update = (partial: Partial<WizardState>) => setWizard(prev => ({ ...prev, ...partial }))
 
@@ -267,6 +292,10 @@ export default function Studio() {
       }
 
       logUsage('model_run', { state: wizard.state, config })
+      // Update saved fund if editing an existing design
+      if (editingFundId) {
+        try { await updateFund(editingFundId, config) } catch (e) { console.error('Failed to update saved fund:', e) }
+      }
       const result = await runFundModel(config)
       sessionStorage.setItem('programResult', JSON.stringify({
         fund: result.fund,
@@ -304,6 +333,17 @@ export default function Studio() {
       console.error('Fund model run failed:', e)
       setIsRunning(false)
     }
+  }
+
+  if (loadingFund) {
+    return (
+      <div className="bg-sectionAlt min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <H2 className="mb-4">Loading Design...</H2>
+          <Body className="text-lightGray">Fetching your saved program configuration</Body>
+        </div>
+      </div>
+    )
   }
 
   return (

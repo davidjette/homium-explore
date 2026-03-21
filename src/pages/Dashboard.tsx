@@ -131,8 +131,14 @@ export default function Dashboard() {
                   <div className="flex items-center gap-2 shrink-0">
                     <Button
                       size="sm"
+                      onClick={() => navigate(`/program?fundId=${fund.id}`)}
+                    >
+                      View
+                    </Button>
+                    <Button
+                      size="sm"
                       variant="outline"
-                      onClick={() => navigate(`/design`)}
+                      onClick={() => navigate(`/design?fundId=${fund.id}`)}
                     >
                       Edit
                     </Button>

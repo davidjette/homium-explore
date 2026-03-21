@@ -12,7 +12,7 @@ import { useAuthContext } from '../components/shared/AuthProvider'
 import ShareButton from '../components/shared/ShareButton'
 import { trackEvent } from '../lib/analytics'
 import { logUsage } from '../lib/usageLog'
-import { runFundModel } from '../lib/api'
+import { runFundModel, fetchFund } from '../lib/api'
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -83,8 +83,58 @@ export default function Program() {
   const { isTeam } = useAuthContext()
 
   const [loading, setLoading] = useState(false)
+  const [fundId] = useState(() => new URLSearchParams(window.location.search).get('fundId'))
 
   useEffect(() => {
+    // Check for saved fund: /program?fundId=<uuid>
+    if (fundId) {
+      setLoading(true)
+      fetchFund(fundId).then(({ fund: fundConfig, latestRun }) => {
+        if (!latestRun) {
+          // No results yet — redirect to edit
+          navigate(`/design?fundId=${fundId}`)
+          return
+        }
+        const result = latestRun
+        const abbr = fundConfig.geography?.state || ''
+        const name = STATE_NAMES[abbr] || fundConfig.geography?.label || abbr
+        setStateAbbr(abbr)
+        setStateName(name)
+        const endIdx = result.blended.length - 1
+        const yrEndData = result.blended[endIdx]
+        setData({
+          fund: fundConfig,
+          totalHomeowners: result.totalHomeowners,
+          blendedYrEnd: yrEndData ? {
+            equityCreated: Math.round(yrEndData.totalEquityCreated),
+            activeHomeowners: yrEndData.activeHomeowners,
+            roiCumulative: yrEndData.roiCumulative,
+            homeownersCum: yrEndData.totalHomeownersCum,
+          } : null,
+          scenarios: result.scenarioResults.map((sr: any) => ({
+            name: sr.scenario.name,
+            homeowners: sr.cohorts?.reduce((s: number, c: any) => s + c.homeownerCount, 0) || 0,
+            medianIncome: sr.scenario.medianIncome,
+            medianHomeValue: sr.scenario.medianHomeValue,
+            affordabilityGap: sr.affordability?.gapAfter || 0,
+          })),
+          housingData: {
+            medianIncome: fundConfig.scenarios?.[1]?.medianIncome || fundConfig.scenarios?.[0]?.medianIncome || 0,
+            medianHomeValue: fundConfig.scenarios?.[1]?.medianHomeValue || fundConfig.scenarios?.[0]?.medianHomeValue || 0,
+          },
+          fullResult: result,
+          geoBreakdown: result.geoBreakdown,
+        })
+        setLoading(false)
+        trackEvent('saved_fund_loaded', { state: abbr, fundId })
+      }).catch(err => {
+        console.error('Failed to load saved fund:', err)
+        setLoading(false)
+        navigate('/dashboard')
+      })
+      return
+    }
+
     // Check for shared link: /program#c=<base64url-encoded fund config>
     const hash = window.location.hash
     if (hash.startsWith('#c=')) {
@@ -161,7 +211,7 @@ export default function Program() {
     <Section>
       <div className="max-w-xl mx-auto text-center py-20">
         <H2 className="mb-4">Loading Program...</H2>
-        <Body className="text-lightGray">Running the fund model from a shared link</Body>
+        <Body className="text-lightGray">Loading program results...</Body>
       </div>
     </Section>
   )
@@ -660,7 +710,7 @@ export default function Program() {
         <div className="max-w-xl mx-auto text-center">
           <H3 className="mb-6">What's Next?</H3>
           <div className="flex flex-wrap justify-center gap-4">
-            <Button onClick={() => navigate('/design')}>
+            <Button onClick={() => navigate(fundId ? `/design?fundId=${fundId}` : '/design')}>
               Edit Program
             </Button>
             <PdfExportButton fund={fund} programName={programName} includeAffordabilitySensitivity={includeAffordabilitySensitivity} />
