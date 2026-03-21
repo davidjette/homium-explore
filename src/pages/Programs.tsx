@@ -228,9 +228,6 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
               <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} allowDecimals={false} />
               <Tooltip
                 labelFormatter={(l) => `Month: ${l}`}
-                formatter={(v: number, name: string) =>
-                  [v, name === 'cumulative' ? 'Total Loans' : 'New Loans']
-                }
               />
               <Area
                 type="stepAfter"
@@ -254,7 +251,7 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
               <XAxis type="number" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={(v) => fmtDollar(v)} />
               <YAxis type="category" dataKey="county" tick={{ fontSize: 11, fill: CHART_COLORS.dark }} width={90} />
               <Tooltip
-                formatter={(v: number) => fmtDollar(v)}
+                formatter={(v) => fmtDollar(Number(v))}
                 labelFormatter={(l) => `${l} County`}
               />
               <Bar dataKey="total" fill={PROGRAM_COLORS[programId]} radius={[0, 4, 4, 0]} name="Deployed" />
@@ -407,7 +404,7 @@ function HALHomeValueChart() {
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
           <XAxis dataKey="id" tick={{ fontSize: 9, fill: CHART_COLORS.gray }} angle={-45} textAnchor="end" height={50} />
           <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} />
-          <Tooltip formatter={(v: number) => fmtDollar(v)} />
+          <Tooltip formatter={(v) => fmtDollar(Number(v))} />
           <Bar dataKey="homeValue" fill={CHART_COLORS.border} radius={[4, 4, 0, 0]} name="Home Value" />
           <Bar dataKey="loanAmount" fill={CHART_COLORS.accent} radius={[4, 4, 0, 0]} name="Loan Amount" />
         </BarChart>
@@ -438,7 +435,7 @@ function SAMCollateralChart({ programId }: { programId: ProgramId }) {
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
           <XAxis dataKey="id" tick={{ fontSize: 9, fill: CHART_COLORS.gray }} angle={-45} textAnchor="end" height={50} />
           <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} />
-          <Tooltip formatter={(v: number) => fmtDollar(v)} />
+          <Tooltip formatter={(v) => fmtDollar(Number(v))} />
           <Bar dataKey="purchasePrice" fill={CHART_COLORS.border} radius={[4, 4, 0, 0]} name="Purchase Price" />
           <Bar dataKey="loanAmount" fill={PROGRAM_COLORS[programId]} radius={[4, 4, 0, 0]} name="SAM Amount" />
         </BarChart>
@@ -494,7 +491,7 @@ function THHICLTVChart() {
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
           <XAxis dataKey="id" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} />
           <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-          <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} />
+          <Tooltip formatter={(v) => `${Number(v).toFixed(1)}%`} />
           <ReferenceLine y={80} stroke={CHART_COLORS.accent} strokeDasharray="5 5" label={{ value: '80% CLTV', fill: CHART_COLORS.accent, fontSize: 10 }} />
           <Bar dataKey="cltv" fill={CHART_COLORS.dark} radius={[4, 4, 0, 0]} name="CLTV %" />
         </BarChart>
