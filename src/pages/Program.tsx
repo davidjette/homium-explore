@@ -95,35 +95,39 @@ export default function Program() {
           navigate(`/design?fundId=${fundId}`)
           return
         }
-        const result = latestRun
         const abbr = fundConfig.geography?.state || ''
         const name = STATE_NAMES[abbr] || fundConfig.geography?.label || abbr
         setStateAbbr(abbr)
         setStateName(name)
-        const endIdx = result.blended.length - 1
-        const yrEndData = result.blended[endIdx]
+
+        // latestRun from DB has: blended, scenarios (array of ScenarioResult), totalHomeowners
+        const blended = latestRun.blended || []
+        const scenarioResults = latestRun.scenarios || []
+        const endIdx = blended.length - 1
+        const yrEndData = blended[endIdx]
+
         setData({
           fund: fundConfig,
-          totalHomeowners: result.totalHomeowners,
+          totalHomeowners: latestRun.totalHomeowners || 0,
           blendedYrEnd: yrEndData ? {
             equityCreated: Math.round(yrEndData.totalEquityCreated),
             activeHomeowners: yrEndData.activeHomeowners,
             roiCumulative: yrEndData.roiCumulative,
             homeownersCum: yrEndData.totalHomeownersCum,
           } : null,
-          scenarios: result.scenarioResults.map((sr: any) => ({
-            name: sr.scenario.name,
-            homeowners: sr.cohorts?.reduce((s: number, c: any) => s + c.homeownerCount, 0) || 0,
-            medianIncome: sr.scenario.medianIncome,
-            medianHomeValue: sr.scenario.medianHomeValue,
+          scenarios: scenarioResults.map((sr: any) => ({
+            name: sr.scenario?.name || sr.name || '',
+            homeowners: sr.cohorts?.reduce((s: number, c: any) => s + c.homeownerCount, 0) || sr.homeowners || 0,
+            medianIncome: sr.scenario?.medianIncome || sr.medianIncome || 0,
+            medianHomeValue: sr.scenario?.medianHomeValue || sr.medianHomeValue || 0,
             affordabilityGap: sr.affordability?.gapAfter || 0,
           })),
           housingData: {
             medianIncome: fundConfig.scenarios?.[1]?.medianIncome || fundConfig.scenarios?.[0]?.medianIncome || 0,
             medianHomeValue: fundConfig.scenarios?.[1]?.medianHomeValue || fundConfig.scenarios?.[0]?.medianHomeValue || 0,
           },
-          fullResult: result,
-          geoBreakdown: result.geoBreakdown,
+          fullResult: { blended, scenarioResults },
+          geoBreakdown: latestRun.metadata?.geoBreakdown,
         })
         setLoading(false)
         trackEvent('saved_fund_loaded', { state: abbr, fundId })
