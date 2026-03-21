@@ -10,6 +10,7 @@ import Studio from './pages/Studio'
 import Program from './pages/Program'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
+import Programs from './pages/Programs'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuthContext()
@@ -30,6 +31,43 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
             Create a free account to design homeownership programs, run fund models, and export reports.
           </Body>
           <SignInModal />
+        </div>
+      </Container>
+    </div>
+  )
+
+  return <>{children}</>
+}
+
+function RequireTeam({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isTeam, loading } = useAuthContext()
+
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <p className="font-body text-lightGray">Loading...</p>
+    </div>
+  )
+
+  if (!isAuthenticated) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Container>
+        <div className="max-w-md mx-auto text-center">
+          <H2>Sign in to continue</H2>
+          <Body className="mt-3 mb-8 text-lightGray">Team access required.</Body>
+          <SignInModal />
+        </div>
+      </Container>
+    </div>
+  )
+
+  if (!isTeam) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Container>
+        <div className="max-w-md mx-auto text-center">
+          <H2>Access Denied</H2>
+          <Body className="mt-3 text-lightGray">
+            This page is available to Homium team members. Contact a Homium administrator for access.
+          </Body>
         </div>
       </Container>
     </div>
@@ -95,6 +133,9 @@ export default function App() {
           } />
           <Route path="/dashboard" element={
             <RequireAuth><Dashboard /></RequireAuth>
+          } />
+          <Route path="/programs" element={
+            <RequireTeam><Programs /></RequireTeam>
           } />
           <Route path="/admin" element={
             <RequireAdmin><Admin /></RequireAdmin>

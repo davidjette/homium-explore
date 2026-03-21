@@ -36,6 +36,7 @@ export interface GeoAllocation {
   state: string;
   county?: string;
   zip?: string;
+  fips?: string;              // 5-digit county FIPS (auto-resolved from name if not provided)
   allocationPct: number;      // share of totalRaise, must sum to 1.0
   medianIncome: number;
   medianHomeValue: number;

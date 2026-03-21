@@ -45,7 +45,7 @@ export function LandingNav() {
 /** Tool pages nav — route-based links + auth */
 export function ToolNav() {
   const { pathname } = useLocation();
-  const { isAuthenticated, isAdmin, signOut, profile, loading } = useAuthContext();
+  const { isAuthenticated, isAdmin, isTeam, signOut, profile, loading } = useAuthContext();
   const [showSignIn, setShowSignIn] = useState(false);
 
   return (
@@ -61,6 +61,9 @@ export function ToolNav() {
             <RouteLink to="/program" active={pathname === '/program'}>Program</RouteLink>
             {isAuthenticated && (
               <RouteLink to="/dashboard" active={pathname === '/dashboard'}>My Designs</RouteLink>
+            )}
+            {isAuthenticated && isTeam && (
+              <RouteLink to="/programs" active={pathname === '/programs'}>Programs</RouteLink>
             )}
             {isAuthenticated && isAdmin && (
               <RouteLink to="/admin" active={pathname === '/admin'}>Admin</RouteLink>
