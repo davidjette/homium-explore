@@ -63,7 +63,7 @@ export function ToolNav() {
               <RouteLink to="/dashboard" active={pathname === '/dashboard'}>My Designs</RouteLink>
             )}
             {isAuthenticated && isTeam && (
-              <RouteLink to="/programs" active={pathname === '/programs'}>Programs</RouteLink>
+              <RouteLink to="/data" active={pathname === '/data'}>Data</RouteLink>
             )}
             {isAuthenticated && isAdmin && (
               <RouteLink to="/admin" active={pathname === '/admin'}>Admin</RouteLink>

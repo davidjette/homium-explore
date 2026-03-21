@@ -7,9 +7,9 @@ import { THHI_LOANS, THHI_META } from './thhi'
 import { HAL_LOANS, HAL_META } from './hal'
 
 export { UDF_LOANS, UDF_META } from './udf'
-export { THHI_LOANS, THHI_META } from './thhi'
-export { HAL_LOANS, HAL_META, HAL_PILOT_STATS } from './hal'
-export type { SAMLoan, HALLoan, ProgramMeta, ProgramStats } from './types'
+export { THHI_LOANS, THHI_META, THHI_PROFILES, THHI_AGGREGATE } from './thhi'
+export { HAL_LOANS, HAL_META, HAL_PILOT_STATS, HAL_NAV_STATS } from './hal'
+export type { SAMLoan, HALLoan, ProgramMeta, ProgramStats, THHIBorrowerProfile, HALNAVStats } from './types'
 
 export type ProgramId = 'udf' | 'thhi' | 'hal'
 

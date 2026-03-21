@@ -2,14 +2,14 @@
  * Programs — Live Program Explorer
  *
  * Team-only page showing anonymized portfolio data across three active Homium programs.
- * All data sourced from loan manifests, portfolio CSVs, ATR worksheets, and published materials.
+ * All data sourced from loan manifests, portfolio CSVs, ATR worksheets, QC reports, and published materials.
  * See src/data/programs/ for source documentation.
  */
 import { useState } from 'react'
 import {
   BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  ReferenceLine, Cell,
+  ReferenceLine, Cell, ScatterChart, Scatter, ZAxis,
 } from 'recharts'
 import { Container, Section } from '../design-system/Layout'
 import { H1, H2, H3, Body, Label, Caption } from '../design-system/Typography'
@@ -19,7 +19,8 @@ import {
   PROGRAM_METAS, PROGRAM_STATS, getCrossStats,
   getGeoDistribution, getOriginationTimeline, getLTVDistribution,
   getHALIncomeDistribution, getHALStatusCounts,
-  HAL_PILOT_STATS, HAL_LOANS, UDF_LOANS, THHI_LOANS,
+  HAL_PILOT_STATS, HAL_NAV_STATS, HAL_LOANS,
+  UDF_LOANS, THHI_LOANS, THHI_PROFILES, THHI_AGGREGATE,
   type ProgramId,
 } from '../data/programs'
 
@@ -189,7 +190,6 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
   const meta = PROGRAM_METAS[programId]
   const stats = PROGRAM_STATS[programId]
   const geo = getGeoDistribution(programId)
-  const timeline = getOriginationTimeline(programId)
   const ltvDist = getLTVDistribution(programId)
 
   return (
@@ -209,40 +209,33 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
           <StatCard label="Avg LTV" value={fmtPct(stats.avgLTV, 1)} />
           {programId === 'hal' && (
             <>
+              <StatCard label="Active" value={String(getHALStatusCounts().active)} />
+              <StatCard label="Paid Off" value={String(getHALStatusCounts().paidOff)} />
               <StatCard label="Avg AMI" value={fmtPct(HAL_PILOT_STATS.avgAMI, 0)} />
               <StatCard label="Under 80% AMI" value={fmtPct(HAL_PILOT_STATS.pctUnder80AMI, 0)} />
+            </>
+          )}
+          {programId === 'thhi' && (
+            <>
+              <StatCard label="Avg AMI" value={fmtPct(THHI_AGGREGATE.avgAMI, 0)} />
+              <StatCard label="Avg FICO" value={String(THHI_AGGREGATE.avgFICO)} />
+              <StatCard label="Avg Monthly PITI" value={fmtDollar(THHI_AGGREGATE.avgMonthlyPITI)} />
             </>
           )}
         </div>
       </div>
 
-      {/* Charts Row 1: Timeline + Geography */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Origination Timeline */}
-        <Card>
-          <Label className="block mb-4">Origination Timeline</Label>
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={timeline}>
-              <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} />
-              <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} allowDecimals={false} />
-              <Tooltip
-                labelFormatter={(l) => `Month: ${l}`}
-              />
-              <Area
-                type="stepAfter"
-                dataKey="cumulative"
-                stroke={PROGRAM_COLORS[programId]}
-                fill={PROGRAM_COLORS[programId]}
-                fillOpacity={0.15}
-                strokeWidth={2}
-                name="cumulative"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </Card>
+      {/* HAL NAV Section */}
+      {programId === 'hal' && <HALNAVSection />}
 
-        {/* Geographic Distribution */}
+      {/* THHI Borrower Profiles */}
+      {programId === 'thhi' && <THHIBorrowerSection />}
+
+      {/* UDF Video */}
+      {programId === 'udf' && <UDFVideoSection />}
+
+      {/* Charts Row 1: Geography + LTV */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card>
           <Label className="block mb-4">Geographic Distribution</Label>
           <ResponsiveContainer width="100%" height={280}>
@@ -261,11 +254,7 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
             {geo.map((g) => `${g.county}: ${g.count} loan${g.count > 1 ? 's' : ''}`).join(' · ')}
           </Caption>
         </Card>
-      </div>
 
-      {/* Charts Row 2: LTV Distribution + Program-Specific */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* LTV Distribution */}
         <Card>
           <Label className="block mb-4">LTV Distribution</Label>
           <ResponsiveContainer width="100%" height={280}>
@@ -278,28 +267,35 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
             </BarChart>
           </ResponsiveContainer>
         </Card>
+      </div>
 
-        {/* Program-Specific Chart */}
+      {/* Charts Row 2: Program-Specific */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {programId === 'hal' ? (
-          <HALIncomeChart />
+          <>
+            <HALIncomeChart />
+            <HALValuationBridge />
+          </>
         ) : (
-          <SAMCollateralChart programId={programId} />
+          <>
+            <SAMCollateralChart programId={programId} />
+            <SAMLoanAmountDistribution programId={programId} />
+          </>
         )}
       </div>
 
-      {/* HAL-specific: Status + Rate */}
+      {/* HAL Risk Profile */}
       {programId === 'hal' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <HALStatusChart />
-          <HALHomeValueChart />
+          <HALRiskProfile />
+          <HALOriginationTimeline />
         </div>
       )}
 
-      {/* THHI/UDF specific: SAM charts */}
-      {programId !== 'hal' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <SAMPriceDistribution programId={programId} />
-          {programId === 'thhi' && <THHICLTVChart />}
+      {/* THHI Payment Comparison */}
+      {programId === 'thhi' && (
+        <div className="grid grid-cols-1 gap-8">
+          <THHIPaymentComparison />
         </div>
       )}
 
@@ -323,10 +319,10 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
       <div className="border-t border-border pt-6">
         <Caption className="block">
           Data sources: {programId === 'hal'
-            ? 'loan-manifest-v2.xlsx, ATR Worksheets, Homium Colorado Pilot Results - 2024.pdf'
+            ? 'loan-manifest-v2.xlsx, ATR Worksheets, Homium Colorado Pilot Results - 2024.pdf, hom_portfolio_2026_03_19_qc.xlsx'
             : programId === 'udf'
               ? 'portfolio_03_18_2026 udf.csv (Utah Dream Fund portfolio export)'
-              : 'portfolio_03_18_2026 thhi.csv (THHI portfolio export)'
+              : 'portfolio_03_18_2026 thhi.csv, THHI Borrower Profiles_3.20.pdf'
           }. All borrower names and addresses removed. Financial figures are unmodified from source.
         </Caption>
       </div>
@@ -334,7 +330,37 @@ function ProgramDetail({ programId }: { programId: ProgramId }) {
   )
 }
 
-// ─── HAL-specific charts ─────────────────────────────────────────
+// ─── HAL NAV Section ─────────────────────────────────────────────
+
+function HALNAVSection() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <H3 className="mb-2">Portfolio NAV Analysis</H3>
+        <Caption className="block mb-6">
+          Source: {HAL_NAV_STATS.source} (snapshot {HAL_NAV_STATS.snapshotDate})
+        </Caption>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <StatCard label="h Price" value={`$${HAL_NAV_STATS.hPriceRounded.toFixed(4)}`} />
+        <StatCard label="Monthly Change" value={`+${(HAL_NAV_STATS.hPriceChangePct * 100).toFixed(2)}%`} />
+        <StatCard label="Active h Supply" value={fmtNumber(HAL_NAV_STATS.activeHSupply)} />
+        <StatCard label="Total Qualified Value" value={fmtDollar(HAL_NAV_STATS.totalQualifiedValue)} />
+        <StatCard label="h Issued (All Time)" value={fmtNumber(HAL_NAV_STATS.totalHIssued)} />
+      </div>
+      <Card className="bg-sectionAlt border-border">
+        <Caption className="block leading-relaxed">
+          <strong>h Methodology:</strong> h = (Qualified Value + Qualified Cash) / Active Supply.
+          Qualified Value uses MIN(Implied Value, Liquidation Value) per loan, marked monthly using CoreLogic Case-Shiller HPI indices at the MSA level.
+          Implied Value = Original Loan × (Current HPI / Initial HPI). Prior month h price: ${HAL_NAV_STATS.priorMonthPrice.toFixed(5)}.
+          Retired h: {fmtNumber(HAL_NAV_STATS.totalHRetired)} (from paid-off loans).
+        </Caption>
+      </Card>
+    </div>
+  )
+}
+
+// ─── HAL Charts ──────────────────────────────────────────────────
 
 function HALIncomeChart() {
   const data = getHALIncomeDistribution()
@@ -358,59 +384,222 @@ function HALIncomeChart() {
   )
 }
 
-function HALStatusChart() {
-  const { active, paidOff } = getHALStatusCounts()
-  const data = [{ name: 'Portfolio', active, paidOff }]
-  return (
-    <Card>
-      <Label className="block mb-4">Loan Status</Label>
-      <ResponsiveContainer width="100%" height={120}>
-        <BarChart data={data} layout="vertical">
-          <XAxis type="number" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} domain={[0, 16]} />
-          <YAxis type="category" dataKey="name" hide />
-          <Tooltip />
-          <Bar dataKey="active" stackId="status" fill={CHART_COLORS.green} name="Active" radius={[0, 0, 0, 0]} />
-          <Bar dataKey="paidOff" stackId="status" fill={CHART_COLORS.greenLight} name="Paid Off" radius={[0, 4, 4, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-      <div className="flex gap-6 mt-3">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: CHART_COLORS.green }} />
-          <Caption>Active ({active})</Caption>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: CHART_COLORS.greenLight }} />
-          <Caption>Paid Off ({paidOff})</Caption>
-        </div>
-      </div>
-    </Card>
-  )
-}
-
-function HALHomeValueChart() {
-  const data = HAL_LOANS
-    .map((l) => ({
-      id: l.id,
-      homeValue: l.appraisedValue,
-      loanAmount: l.noteAmount,
-    }))
-    .sort((a, b) => b.homeValue - a.homeValue)
+function HALValuationBridge() {
+  const activeLoans = HAL_LOANS.filter((l) => l.status === 'active' && l.qualifiedValue !== null)
+  const data = activeLoans.map((l) => ({
+    id: l.id,
+    original: l.noteAmount,
+    appreciation: l.qualifiedValue! - l.noteAmount,
+    qualifiedValue: l.qualifiedValue!,
+  }))
 
   return (
     <Card>
-      <Label className="block mb-4">Home Value vs. Loan Amount</Label>
+      <Label className="block mb-1">Portfolio Valuation: Original → Qualified Value</Label>
+      <Caption className="block mb-4">Source: hom_portfolio_2026_03_19_qc.xlsx (active loans only)</Caption>
       <ResponsiveContainer width="100%" height={280}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
           <XAxis dataKey="id" tick={{ fontSize: 9, fill: CHART_COLORS.gray }} angle={-45} textAnchor="end" height={50} />
           <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} />
           <Tooltip formatter={(v) => fmtDollar(Number(v))} />
-          <Bar dataKey="homeValue" fill={CHART_COLORS.border} radius={[4, 4, 0, 0]} name="Home Value" />
-          <Bar dataKey="loanAmount" fill={CHART_COLORS.accent} radius={[4, 4, 0, 0]} name="Loan Amount" />
+          <Bar dataKey="original" stackId="val" fill={CHART_COLORS.accent} name="Original Loan" radius={[0, 0, 0, 0]} />
+          <Bar dataKey="appreciation" stackId="val" fill={CHART_COLORS.green} name="HPI Appreciation" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
-      <Caption className="mt-2 block">Conservative positioning: avg LTV of 15% across the portfolio</Caption>
+      <div className="flex gap-6 mt-3">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: CHART_COLORS.accent }} />
+          <Caption>Original Loan</Caption>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: CHART_COLORS.green }} />
+          <Caption>HPI Appreciation</Caption>
+        </div>
+      </div>
     </Card>
+  )
+}
+
+function HALRiskProfile() {
+  const activeLoans = HAL_LOANS.filter((l) => l.status === 'active' && l.qcCLTV !== null)
+  const data = activeLoans.map((l) => ({
+    id: l.id,
+    ltv: +(l.ltv * 100).toFixed(1),
+    cltv: l.qcCLTV!,
+    noteAmount: l.noteAmount,
+  }))
+
+  return (
+    <Card>
+      <Label className="block mb-1">Risk Profile: LTV vs. Mark-to-Market CLTV</Label>
+      <Caption className="block mb-4">Active loans — CLTV from QC report (mark-to-market)</Caption>
+      <ResponsiveContainer width="100%" height={280}>
+        <ScatterChart>
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
+          <XAxis
+            type="number"
+            dataKey="ltv"
+            name="LTV"
+            tick={{ fontSize: 11, fill: CHART_COLORS.gray }}
+            label={{ value: 'LTV %', position: 'insideBottom', offset: -5, fontSize: 11, fill: CHART_COLORS.gray }}
+            domain={[0, 30]}
+          />
+          <YAxis
+            type="number"
+            dataKey="cltv"
+            name="CLTV"
+            tick={{ fontSize: 11, fill: CHART_COLORS.gray }}
+            label={{ value: 'CLTV %', angle: -90, position: 'insideLeft', fontSize: 11, fill: CHART_COLORS.gray }}
+            domain={[40, 85]}
+          />
+          <ZAxis type="number" dataKey="noteAmount" range={[60, 300]} />
+          <Tooltip
+            formatter={(v, name) => [`${Number(v).toFixed(1)}%`, name]}
+            labelFormatter={() => ''}
+          />
+          <ReferenceLine y={80} stroke={CHART_COLORS.accent} strokeDasharray="5 5" label={{ value: '80% CLTV', fill: CHART_COLORS.accent, fontSize: 10 }} />
+          <Scatter data={data} fill={CHART_COLORS.accent} name="Loans" />
+        </ScatterChart>
+      </ResponsiveContainer>
+      <Caption className="mt-2 block">
+        Bubble size = loan amount. Most loans cluster at low LTV (7–27%) with CLTV below 80%.
+      </Caption>
+    </Card>
+  )
+}
+
+function HALOriginationTimeline() {
+  const timeline = getOriginationTimeline('hal')
+  return (
+    <Card>
+      <Label className="block mb-4">Origination Timeline</Label>
+      <ResponsiveContainer width="100%" height={280}>
+        <AreaChart data={timeline}>
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
+          <XAxis dataKey="month" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} />
+          <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} allowDecimals={false} />
+          <Tooltip labelFormatter={(l) => `Month: ${l}`} />
+          <Area
+            type="stepAfter"
+            dataKey="cumulative"
+            stroke={CHART_COLORS.accent}
+            fill={CHART_COLORS.accent}
+            fillOpacity={0.15}
+            strokeWidth={2}
+            name="Cumulative Loans"
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </Card>
+  )
+}
+
+// ─── THHI Sections ───────────────────────────────────────────────
+
+function THHIBorrowerSection() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <H3 className="mb-2">Borrower Profiles</H3>
+        <Caption className="block mb-6">Source: THHI Borrower Profiles_3.20.pdf</Caption>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {THHI_PROFILES.map((p) => (
+          <Card key={p.occupation} className="!p-4">
+            <Label className="block mb-2 text-dark">{p.occupation}</Label>
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Caption>AMI</Caption>
+                <Caption className="font-medium text-dark">{(p.amiPct * 100).toFixed(0)}%</Caption>
+              </div>
+              <div className="flex justify-between">
+                <Caption>Prior Rent</Caption>
+                <Caption className="font-medium text-dark">{fmtDollar(p.priorRent)}/mo</Caption>
+              </div>
+              <div className="flex justify-between">
+                <Caption>New Total</Caption>
+                <Caption className="font-medium text-dark">{fmtDollar(p.totalMonthly)}/mo</Caption>
+              </div>
+              <div className="flex justify-between">
+                <Caption>Savings</Caption>
+                <Caption className={`font-medium ${p.savingsPct >= 0 ? 'text-green' : 'text-accent'}`}>
+                  {p.savingsPct >= 0 ? '+' : ''}{(p.savingsPct * 100).toFixed(0)}%
+                </Caption>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <StatCard label="Avg Home Price" value={fmtDollar(THHI_AGGREGATE.avgHomePrice)} />
+        <StatCard label="Avg AMI" value={fmtPct(THHI_AGGREGATE.avgAMI, 0)} />
+        <StatCard label="Avg FICO" value={String(THHI_AGGREGATE.avgFICO)} />
+        <StatCard label="Avg 1st Lien Rate" value={fmtPct(THHI_AGGREGATE.avgFirstLienRate, 2)} />
+        <StatCard label="Avg 1st Lien LTV" value={fmtPct(THHI_AGGREGATE.avgFirstLienLTV, 0)} />
+      </div>
+    </div>
+  )
+}
+
+function THHIPaymentComparison() {
+  const data = THHI_PROFILES.map((p) => ({
+    name: p.occupation,
+    priorRent: p.priorRent,
+    newTotal: p.totalMonthly,
+    savings: p.priorRent - p.totalMonthly,
+  }))
+
+  return (
+    <Card>
+      <Label className="block mb-1">Monthly Payment: Prior Rent vs. THHI Homeownership</Label>
+      <Caption className="block mb-4">Source: THHI Borrower Profiles_3.20.pdf (PITI + maintenance estimate)</Caption>
+      <ResponsiveContainer width="100%" height={320}>
+        <BarChart data={data} layout="vertical">
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} horizontal={false} />
+          <XAxis type="number" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={(v) => fmtDollar(v)} />
+          <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: CHART_COLORS.dark }} width={130} />
+          <Tooltip formatter={(v) => fmtDollar(Number(v))} />
+          <Bar dataKey="priorRent" fill={CHART_COLORS.border} radius={[0, 4, 4, 0]} name="Prior Rent" />
+          <Bar dataKey="newTotal" fill={CHART_COLORS.dark} radius={[0, 4, 4, 0]} name="THHI Total (PITI + Maint.)" />
+        </BarChart>
+      </ResponsiveContainer>
+      <div className="flex gap-6 mt-3">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: CHART_COLORS.border }} />
+          <Caption>Prior Rent</Caption>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: CHART_COLORS.dark }} />
+          <Caption>THHI Total (PITI + Maintenance)</Caption>
+        </div>
+      </div>
+      <Caption className="mt-2 block">
+        6 of 8 borrowers pay less for homeownership than they did for rent. Avg monthly PITI + maintenance: {fmtDollar(THHI_AGGREGATE.avgMonthlyPITI)}.
+      </Caption>
+    </Card>
+  )
+}
+
+// ─── UDF Video Section ───────────────────────────────────────────
+
+function UDFVideoSection() {
+  return (
+    <div>
+      <H3 className="mb-2">Hear from a Utah Dream Fund Homeowner</H3>
+      <Caption className="block mb-6">Video from explore.homium.io</Caption>
+      <div className="max-w-3xl">
+        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+          <iframe
+            className="absolute inset-0 w-full h-full rounded-lg"
+            src="https://www.youtube.com/embed/XZCdLg3x2T0"
+            title="Utah Dream Fund Homeowner Story"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -429,7 +618,7 @@ function SAMCollateralChart({ programId }: { programId: ProgramId }) {
 
   return (
     <Card>
-      <Label className="block mb-4">Purchase Price vs. SAM Amount</Label>
+      <Label className="block mb-4">Purchase Price vs. Homium Loan</Label>
       <ResponsiveContainer width="100%" height={280}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
@@ -437,66 +626,42 @@ function SAMCollateralChart({ programId }: { programId: ProgramId }) {
           <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} />
           <Tooltip formatter={(v) => fmtDollar(Number(v))} />
           <Bar dataKey="purchasePrice" fill={CHART_COLORS.border} radius={[4, 4, 0, 0]} name="Purchase Price" />
-          <Bar dataKey="loanAmount" fill={PROGRAM_COLORS[programId]} radius={[4, 4, 0, 0]} name="SAM Amount" />
+          <Bar dataKey="loanAmount" fill={PROGRAM_COLORS[programId]} radius={[4, 4, 0, 0]} name="Homium Loan" />
         </BarChart>
       </ResponsiveContainer>
     </Card>
   )
 }
 
-function SAMPriceDistribution({ programId }: { programId: ProgramId }) {
+function SAMLoanAmountDistribution({ programId }: { programId: ProgramId }) {
   const loans = programId === 'udf' ? UDF_LOANS : THHI_LOANS
   const buckets = [
-    { label: '< $200K', min: 0, max: 200000 },
-    { label: '$200–300K', min: 200000, max: 300000 },
-    { label: '$300–400K', min: 300000, max: 400000 },
-    { label: '$400–500K', min: 400000, max: 500000 },
-    { label: '$500K+', min: 500000, max: Infinity },
+    { label: '< $50K', min: 0, max: 50000 },
+    { label: '$50–75K', min: 50000, max: 75000 },
+    { label: '$75–100K', min: 75000, max: 100000 },
+    { label: '$100–125K', min: 100000, max: 125000 },
+    { label: '$125–150K', min: 125000, max: 150000 },
+    { label: '$150K+', min: 150000, max: Infinity },
   ]
-  const data = buckets.map((b) => ({
-    label: b.label,
-    count: loans.filter((l) => l.purchasePrice >= b.min && l.purchasePrice < b.max).length,
-  }))
+  const data = buckets
+    .map((b) => ({
+      label: b.label,
+      count: loans.filter((l) => l.loanAmount >= b.min && l.loanAmount < b.max).length,
+    }))
+    .filter((d) => d.count > 0)
 
   return (
     <Card>
-      <Label className="block mb-4">Home Price Distribution</Label>
+      <Label className="block mb-4">Loan Amount Distribution</Label>
       <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={data.filter((d) => d.count > 0)}>
+        <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
           <XAxis dataKey="label" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} />
           <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} allowDecimals={false} />
           <Tooltip />
-          <Bar dataKey="count" fill={PROGRAM_COLORS[programId]} radius={[4, 4, 0, 0]} name="Homes" />
+          <Bar dataKey="count" fill={PROGRAM_COLORS[programId]} radius={[4, 4, 0, 0]} name="Loans" />
         </BarChart>
       </ResponsiveContainer>
-    </Card>
-  )
-}
-
-function THHICLTVChart() {
-  const loans = THHI_LOANS.filter((l) => l.previewCLTV !== null)
-  const data = loans.map((l) => ({
-    id: l.id,
-    cltv: l.previewCLTV!,
-  }))
-
-  if (data.length === 0) return null
-
-  return (
-    <Card>
-      <Label className="block mb-4">Combined LTV (CLTV)</Label>
-      <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.border} />
-          <XAxis dataKey="id" tick={{ fontSize: 11, fill: CHART_COLORS.gray }} />
-          <YAxis tick={{ fontSize: 11, fill: CHART_COLORS.gray }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-          <Tooltip formatter={(v) => `${Number(v).toFixed(1)}%`} />
-          <ReferenceLine y={80} stroke={CHART_COLORS.accent} strokeDasharray="5 5" label={{ value: '80% CLTV', fill: CHART_COLORS.accent, fontSize: 10 }} />
-          <Bar dataKey="cltv" fill={CHART_COLORS.dark} radius={[4, 4, 0, 0]} name="CLTV %" />
-        </BarChart>
-      </ResponsiveContainer>
-      <Caption className="mt-2 block">CLTV from portfolio snapshot (preview data)</Caption>
     </Card>
   )
 }

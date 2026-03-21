@@ -14,7 +14,7 @@ export const UDF_META: ProgramMeta = {
   id: 'udf',
   name: 'Utah Dream Fund',
   fullName: 'Utah Dream Fund',
-  productType: 'SAM',
+  productType: 'Purchase',
   location: 'Utah',
   state: 'UT',
   partner: 'Promise Partnership Utah',

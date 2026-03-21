@@ -8,13 +8,13 @@
  * Anonymization: Exact addresses removed. City, county, state retained.
  * All financial figures are original from source CSV.
  */
-import type { SAMLoan, ProgramMeta } from './types'
+import type { SAMLoan, ProgramMeta, THHIBorrowerProfile } from './types'
 
 export const THHI_META: ProgramMeta = {
   id: 'thhi',
   name: 'THHI Detroit',
   fullName: 'Tobias Harris Homeownership Initiative',
-  productType: 'SAM',
+  productType: 'Purchase',
   location: 'Detroit, MI',
   state: 'MI',
   partner: 'Tobias Harris (NBA)',
@@ -168,4 +168,42 @@ export const THHI_LOANS: SAMLoan[] = [
     previewCLTV: 96.98,
     previewCollateral: 3812.38,
   },
+]
+
+/**
+ * THHI Borrower Profiles — from THHI Borrower Profiles_3.20.pdf
+ *
+ * Aggregate stats from same PDF:
+ * - Avg Home Sales Price: $170,625
+ * - Avg AMI: 57% ($51,951/yr)
+ * - Avg FICO: 702
+ * - Avg First Lien Rate: 6.21%
+ * - Avg First Lien LTV: 53%
+ * - Avg Monthly Income: $4,329
+ * - Avg Front Ratio: 15%
+ * - Avg Back Ratio: 32%
+ * - Avg Monthly PITI + Maintenance: $948
+ */
+export const THHI_AGGREGATE = {
+  source: 'THHI Borrower Profiles_3.20.pdf',
+  avgHomePrice: 170625,
+  avgAMI: 0.57,
+  avgFICO: 702,
+  avgFirstLienRate: 0.0621,
+  avgFirstLienLTV: 0.53,
+  avgMonthlyIncome: 4329,
+  avgFrontRatio: 0.15,
+  avgBackRatio: 0.32,
+  avgMonthlyPITI: 948,
+} as const
+
+export const THHI_PROFILES: THHIBorrowerProfile[] = [
+  { occupation: 'Community Health Worker', amiPct: 0.50, priorRent: 819, newPITI: 781, maintenance: 107, totalMonthly: 887, savingsPct: -0.08 },
+  { occupation: 'Retired', amiPct: 0.30, priorRent: 1200, newPITI: 722, maintenance: 155, totalMonthly: 877, savingsPct: 0.27 },
+  { occupation: 'Truck Driver', amiPct: 0.80, priorRent: 1200, newPITI: 938, maintenance: 138, totalMonthly: 1076, savingsPct: 0.10 },
+  { occupation: 'EMT', amiPct: 0.60, priorRent: 1200, newPITI: 897, maintenance: 158, totalMonthly: 1055, savingsPct: 0.12 },
+  { occupation: 'Event Manager', amiPct: 0.60, priorRent: 900, newPITI: 772, maintenance: 112, totalMonthly: 885, savingsPct: 0.02 },
+  { occupation: 'Facilities Employee', amiPct: 0.55, priorRent: 1030, newPITI: 768, maintenance: 137, totalMonthly: 905, savingsPct: 0.12 },
+  { occupation: 'Special Ed Teacher', amiPct: 0.80, priorRent: 785, newPITI: 712, maintenance: 166, totalMonthly: 878, savingsPct: -0.12 },
+  { occupation: 'Disability Worker', amiPct: 0.50, priorRent: 2000, newPITI: 602, maintenance: 150, totalMonthly: 752, savingsPct: 0.62 },
 ]

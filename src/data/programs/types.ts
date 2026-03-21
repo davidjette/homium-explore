@@ -4,8 +4,11 @@
  * All data sourced from:
  * - HAL: finops-workspace/loan-manifest-v2.xlsx (cols A-AC, 17 data rows)
  * - HAL income: ATR Worksheets in Originations/2024 Refinance/Colorado Pilot/
+ * - HAL NAV: Operations/h/Monthly H QC/hom_portfolio_2026_03_19_qc.xlsx
+ * - HAL methodology: Operations/h/Homium HAL - h Methodology 2025.01.docx
  * - UDF: portfolio_03_18_2026 udf.csv (Loans - UD Utah Dream Fund/)
  * - THHI: portfolio_03_18_2026 thhi.csv (Loans - TH Tobias Harris Homeownership Initiative/)
+ * - THHI profiles: THHI Borrower Profiles_3.20.pdf
  * - Aggregate stats: Homium Colorado Pilot Results - 2024.pdf
  */
 
@@ -51,6 +54,22 @@ export interface HALLoan {
   annualIncome: number | null
   // Income bracket matching Pilot Results PDF categories
   incomeBracket: '<25k' | '25k-50k' | '50k-75k' | '75k-100k' | '>100k' | null
+  // NAV fields from QC report (active loans only)
+  qualifiedValue: number | null   // QC "Preview Qualified Value"
+  impliedValue: number | null     // QC "Preview Implied Value"
+  hpiChangePct: number | null     // QC "Preview All Time Change %"
+  qcCLTV: number | null           // QC "Preview CLTV" (mark-to-market)
+}
+
+/** THHI Borrower Profile — from THHI Borrower Profiles_3.20.pdf */
+export interface THHIBorrowerProfile {
+  occupation: string
+  amiPct: number            // decimal (e.g., 0.50 = 50% AMI)
+  priorRent: number         // monthly rent before THHI
+  newPITI: number           // monthly PITI with THHI
+  maintenance: number       // monthly maintenance estimate
+  totalMonthly: number      // newPITI + maintenance
+  savingsPct: number        // decimal (negative = costs more, positive = saves)
 }
 
 /** Program metadata — static descriptive info */
@@ -58,7 +77,7 @@ export interface ProgramMeta {
   id: 'udf' | 'thhi' | 'hal'
   name: string
   fullName: string
-  productType: 'SAM' | 'Home Equity'
+  productType: 'Purchase' | 'Home Equity'
   location: string
   state: string
   partner: string | null
@@ -74,4 +93,19 @@ export interface ProgramStats {
   avgLoanAmount: number
   counties: string[]
   avgLTV: number
+}
+
+/** HAL portfolio-level NAV stats from QC report */
+export interface HALNAVStats {
+  source: string
+  snapshotDate: string
+  hPrice: number
+  hPriceRounded: number
+  hPriceChangePct: number    // vs prior month
+  priorMonthPrice: number
+  activeHSupply: number
+  totalHIssued: number
+  totalHRetired: number
+  totalQualifiedValue: number
+  qualifiedCash: number
 }

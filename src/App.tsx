@@ -134,7 +134,7 @@ export default function App() {
           <Route path="/dashboard" element={
             <RequireAuth><Dashboard /></RequireAuth>
           } />
-          <Route path="/programs" element={
+          <Route path="/data" element={
             <RequireTeam><Programs /></RequireTeam>
           } />
           <Route path="/admin" element={
