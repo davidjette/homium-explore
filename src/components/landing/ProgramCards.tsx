@@ -43,11 +43,11 @@ export default function ProgramCards() {
                 className="absolute inset-0 bg-cover bg-center"
                 style={{ backgroundImage: `url('${p.image}')` }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-dark/90 via-dark/50 to-transparent" />
-              <div className="relative z-10 text-white">
-                <Label className="text-green/80 mb-2 block">{p.location}</Label>
+              <div className="absolute inset-0 bg-white/75" />
+              <div className="relative z-10 text-dark">
+                <Label className="text-gray mb-2 block">{p.location}</Label>
                 <h3 className="font-heading text-[26px] max-md:text-[22px] leading-tight mb-3">{p.name}</h3>
-                <p className="font-body font-light text-white/80 text-sm leading-relaxed mb-5 max-w-md">
+                <p className="font-body font-light text-dark/80 text-sm leading-relaxed mb-5 max-w-md">
                   {p.description}
                 </p>
                 <a

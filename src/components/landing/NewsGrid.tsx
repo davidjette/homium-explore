@@ -42,7 +42,7 @@ const NEWS = [
 
 export default function NewsGrid() {
   return (
-    <section className="py-[88px]">
+    <section id="news" className="py-[88px]">
       <Container>
         <div className="mb-10">
           <Label className="text-green block mb-3">In the News</Label>
