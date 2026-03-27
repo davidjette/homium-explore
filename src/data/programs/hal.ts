@@ -20,14 +20,14 @@ export const HAL_META: ProgramMeta = {
   id: 'hal',
   name: 'Colorado Pilot',
   fullName: 'Homium Equity Unlock — Colorado Pilot',
-  productType: 'Home Equity',
+  productType: 'Shared Appreciation Note',
   location: 'Colorado',
   state: 'CO',
   partner: null,
   sponsors: null,
   capitalRaised: null,
   description:
-    'The Colorado Pilot provides cash-out home equity loans to existing homeowners at a fixed rate of 5.595%, helping families access their home equity for improvements, debt reduction, education, and more — while preserving homeownership stability.',
+    'The Colorado Pilot offered 2nd position shared appreciation notes (SANs) to existing homeowners at up to 80% CLTV, helping families access their home equity for improvements, debt reduction, education, and more — while preserving homeownership stability. $1M in loans closed across 18 borrowers in 2024.',
   impactHighlight:
     'Without explicit income targeting, 50% of borrowers earn under 80% AMI — demonstrating that the product naturally reaches low-to-middle-income households. Average AMI across the portfolio is 84%.',
   website: null,
@@ -35,22 +35,25 @@ export const HAL_META: ProgramMeta = {
 
 /**
  * Aggregate stats from Homium Colorado Pilot Results - 2024.pdf:
- * - Loans Closed: 16
- * - Average Loan Amount: $66,257
+ * - Loans Closed: 18
+ * - Loan Payoffs: 1
+ * - Average Loan Amount: $63,651
  * - Average Home Value: $496,500
- * - Average LTV: 15%
+ * - Average LTV: 14%
  * - Average Annual Income: $60,000
  * - Average AMI: 84%
  * - % Loans < 80% AMI: 50%
  */
 export const HAL_PILOT_STATS = {
   source: 'Homium Colorado Pilot Results - 2024.pdf',
+  loansClosedToDate: 18,
+  loanPayoffs: 1,
   avgAnnualIncome: 60000,
   avgAMI: 0.84,
   pctUnder80AMI: 0.50,
-  avgLoanAmount: 66257,
+  avgLoanAmount: 63651,
   avgHomeValue: 496500,
-  avgLTV: 0.15,
+  avgLTV: 0.14,
 } as const
 
 /**

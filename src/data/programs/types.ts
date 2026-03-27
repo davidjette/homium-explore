@@ -77,7 +77,7 @@ export interface ProgramMeta {
   id: 'udf' | 'thhi' | 'hal'
   name: string
   fullName: string
-  productType: 'Purchase' | 'Home Equity'
+  productType: 'Purchase' | 'Home Equity' | 'Shared Appreciation Note'
   location: string
   state: string
   partner: string | null
