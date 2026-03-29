@@ -147,52 +147,35 @@ export async function deleteAuthUser(userId: string) {
   return res.json();
 }
 
-/** Fetch audit log entries from auth.audit_log_entries (via PostgREST on the management API) */
+/** Fetch audit log entries via RPC function (reads from auth.audit_log_entries) */
 export async function fetchAuditLog(opts?: {
   userId?: string;
   action?: string;
   limit?: number;
   offset?: number;
 }) {
-  // The audit log is in the auth schema — we query it via the Supabase REST API
-  // with the service role key which bypasses RLS
-  const params = new URLSearchParams();
-  params.set('select', 'id,payload,created_at,ip_address');
-  params.set('order', 'created_at.desc');
-  params.set('limit', String(opts?.limit || 50));
-  if (opts?.offset) params.set('offset', String(opts.offset));
-
-  // Filter by actor_id (Supabase stores the user id in payload->actor_id)
-  // We'll do server-side filtering since the audit_log_entries schema varies
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/audit_log_entries?${params.toString()}`,
-    {
-      headers: {
-        ...adminHeaders(),
-        Prefer: 'count=exact',
-      },
-    },
-  );
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_audit_log`, {
+    method: 'POST',
+    headers: adminHeaders(),
+    body: JSON.stringify({
+      result_limit: opts?.limit || 50,
+      result_offset: opts?.offset || 0,
+    }),
+  });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Fetch audit log failed: ${res.status} ${body}`);
   }
 
-  const total = parseInt(res.headers.get('content-range')?.split('/')[1] || '0');
-  const entries = (await res.json()) as any[];
+  let entries = (await res.json()) as any[];
 
-  // Server-side filter by userId if provided
-  let filtered: any[] = entries;
+  // Client-side filtering
   if (opts?.userId) {
-    filtered = entries.filter(
-      (e: any) => e.payload?.actor_id === opts.userId,
-    );
+    entries = entries.filter((e: any) => e.payload?.actor_id === opts.userId);
   }
   if (opts?.action) {
-    filtered = filtered.filter(
-      (e: any) => e.payload?.action === opts.action,
-    );
+    entries = entries.filter((e: any) => e.payload?.action === opts.action);
   }
 
-  return { entries: filtered, total };
+  return { entries, total: entries.length };
 }
