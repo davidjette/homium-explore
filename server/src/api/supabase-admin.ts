@@ -82,22 +82,20 @@ export async function updateAppMetadata(
   return res.json();
 }
 
-/** Generate a password reset link for a user */
-export async function generatePasswordResetLink(email: string, redirectTo?: string) {
-  const body: Record<string, unknown> = {
-    email,
-    type: 'recovery',
-  };
+/** Send a password reset email to a user (Supabase sends the email) */
+export async function sendPasswordResetEmail(email: string, redirectTo?: string) {
+  const body: Record<string, unknown> = { email };
   if (redirectTo) body.redirect_to = redirectTo;
 
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/generate_link`, {
+  // POST /auth/v1/recover triggers Supabase to send the reset email
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
     method: 'POST',
     headers: adminHeaders(),
     body: JSON.stringify(body),
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Generate reset link failed: ${res.status} ${text}`);
+    throw new Error(`Password reset email failed: ${res.status} ${text}`);
   }
   return res.json();
 }

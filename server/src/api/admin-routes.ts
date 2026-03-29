@@ -19,7 +19,7 @@ import {
   listAuthUsers,
   createAuthUser,
   updateAppMetadata,
-  generatePasswordResetLink,
+  sendPasswordResetEmail,
   confirmUserEmail,
   deleteAuthUser,
   fetchAuditLog,
@@ -209,7 +209,7 @@ router.post('/users/:id/reset-password', requireAuth, requireRole('admin'), asyn
       return;
     }
 
-    const result = await generatePasswordResetLink(email, req.body.redirect_to);
+    await sendPasswordResetEmail(email, req.body.redirect_to);
     res.json({ success: true, data: { message: 'Password reset email sent.' } });
   } catch (e: any) {
     console.error('Admin reset password error:', e);
