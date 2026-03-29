@@ -5,8 +5,16 @@
  * Env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  */
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim();
+const SERVICE_ROLE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+
+// Startup check — log enough to diagnose key issues without leaking the full key
+console.log('[supabase-admin] config:', {
+  url: SUPABASE_URL || '(empty)',
+  keyLength: SERVICE_ROLE_KEY.length,
+  keyPrefix: SERVICE_ROLE_KEY.slice(0, 10),
+  keySuffix: SERVICE_ROLE_KEY.slice(-6),
+});
 
 function adminHeaders() {
   return {
