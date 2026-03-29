@@ -18,16 +18,28 @@ function adminHeaders() {
 
 /** Check whether the admin API is configured */
 export function isAdminApiConfigured(): boolean {
-  return !!(SUPABASE_URL && SERVICE_ROLE_KEY);
+  const configured = !!(SUPABASE_URL && SERVICE_ROLE_KEY);
+  if (!configured) {
+    console.warn('Supabase Admin API not configured:', {
+      hasUrl: !!SUPABASE_URL,
+      urlPrefix: SUPABASE_URL?.slice(0, 30),
+      hasKey: !!SERVICE_ROLE_KEY,
+      keyPrefix: SERVICE_ROLE_KEY?.slice(0, 20),
+    });
+  }
+  return configured;
 }
 
 /** List all auth users (paginated) */
 export async function listAuthUsers(page = 1, perPage = 50): Promise<{ users: any[]; total: number }> {
-  const res = await fetch(
-    `${SUPABASE_URL}/auth/v1/admin/users?page=${page}&per_page=${perPage}`,
-    { headers: adminHeaders() },
-  );
-  if (!res.ok) throw new Error(`List users failed: ${res.status}`);
+  const url = `${SUPABASE_URL}/auth/v1/admin/users?page=${page}&per_page=${perPage}`;
+  console.log('listAuthUsers →', url.replace(/\/\/.*@/, '//***@'));
+  const res = await fetch(url, { headers: adminHeaders() });
+  if (!res.ok) {
+    const body = await res.text();
+    console.error('listAuthUsers failed:', res.status, body);
+    throw new Error(`List users failed: ${res.status}`);
+  }
   return res.json() as Promise<{ users: any[]; total: number }>;
 }
 
