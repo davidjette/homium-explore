@@ -110,6 +110,12 @@ export function useAuth() {
     return { needsConfirmation };
   }, []);
 
+  const verifyOtp = useCallback(async (email: string, token: string, type: 'signup' | 'recovery' = 'signup') => {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type });
+    if (error) throw error;
+    return data;
+  }, []);
+
   const resetPassword = useCallback(async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + (import.meta.env.BASE_URL || '/'),
@@ -142,6 +148,7 @@ export function useAuth() {
     signInWithMicrosoft,
     signInWithEmail,
     signUpWithEmail,
+    verifyOtp,
     resetPassword,
     signOut,
     fetchProfile,

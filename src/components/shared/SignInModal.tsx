@@ -21,6 +21,7 @@ export default function SignInModal({ modal = false, onClose }: SignInModalProps
     signInWithMicrosoft,
     signInWithEmail,
     signUpWithEmail,
+    verifyOtp,
     resetPassword,
     signOut,
   } = useAuthContext();
@@ -32,6 +33,8 @@ export default function SignInModal({ modal = false, onClose }: SignInModalProps
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
 
   const handleOAuth = async (provider: 'google' | 'microsoft') => {
     setError('');
@@ -69,7 +72,36 @@ export default function SignInModal({ modal = false, onClose }: SignInModalProps
     }
   };
 
-  // Full-screen confirmation after sign-up
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode || otpCode.length !== 6) return;
+
+    setVerifyingOtp(true);
+    setError('');
+    try {
+      await verifyOtp(email, otpCode, 'signup');
+      // OTP verified — user is now signed in via the auth state change listener
+      onClose?.();
+    } catch (err: any) {
+      setError(err.message || 'Invalid or expired code. Please try again.');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setError('');
+    setMessage('');
+    try {
+      await signUpWithEmail(email, password);
+      await signOut().catch(() => {});
+      setMessage('A new code has been sent to your email.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend code');
+    }
+  };
+
+  // Full-screen confirmation after sign-up — OTP verification
   if (confirmationSent) {
     const confirmationContent = (
       <div className="w-full max-w-sm mx-auto text-center py-4">
@@ -78,22 +110,51 @@ export default function SignInModal({ modal = false, onClose }: SignInModalProps
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
         </div>
-        <h3 className="font-heading text-xl text-dark mb-2">Check your email</h3>
+        <h3 className="font-heading text-xl text-dark mb-2">Enter confirmation code</h3>
         <Body className="text-lightGray mb-6">
-          We sent a confirmation link to <strong className="text-dark">{email}</strong>. Click the link in your email to activate your account, then come back and sign in.
+          We sent a 6-digit code to <strong className="text-dark">{email}</strong>. Enter it below to verify your account.
         </Body>
-        <Button
-          variant="outline"
-          onClick={() => {
-            setConfirmationSent(false);
-            setMode('signin');
-            setPassword('');
-            setError('');
-            setMessage('');
-          }}
-        >
-          Back to Sign In
-        </Button>
+
+        <form onSubmit={handleVerifyOtp} className="space-y-4">
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]{6}"
+            maxLength={6}
+            placeholder="000000"
+            value={otpCode}
+            onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            autoFocus
+            className="w-full px-4 py-3 border border-border rounded-lg font-body text-2xl text-center tracking-[0.5em] text-dark placeholder:text-lightGray/40 focus:outline-none focus:ring-2 focus:ring-green/30 focus:border-green"
+          />
+
+          {error && <p className="font-body text-sm text-red-600">{error}</p>}
+          {message && <p className="font-body text-sm text-green">{message}</p>}
+
+          <Button type="submit" className="w-full" disabled={verifyingOtp || otpCode.length !== 6}>
+            {verifyingOtp ? 'Verifying...' : 'Verify'}
+          </Button>
+        </form>
+
+        <div className="mt-4 flex items-center justify-center gap-3 font-body text-sm text-lightGray">
+          <button onClick={handleResendCode} className="text-green hover:underline cursor-pointer">
+            Resend code
+          </button>
+          <span>&middot;</span>
+          <button
+            onClick={() => {
+              setConfirmationSent(false);
+              setOtpCode('');
+              setMode('signin');
+              setPassword('');
+              setError('');
+              setMessage('');
+            }}
+            className="text-green hover:underline cursor-pointer"
+          >
+            Back to Sign In
+          </button>
+        </div>
       </div>
     );
 

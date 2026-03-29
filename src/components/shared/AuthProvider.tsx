@@ -21,6 +21,7 @@ interface AuthContextType {
   signInWithMicrosoft: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
+  verifyOtp: (email: string, token: string, type?: 'signup' | 'recovery') => Promise<any>;
   resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   fetchProfile: (accessToken: string) => Promise<UserProfile | null>;
