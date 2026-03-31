@@ -2,16 +2,16 @@ import { Container } from '../../design-system/Layout'
 import { H2 } from '../../design-system/Typography'
 
 const THHI_METRICS = [
-  { label: 'Average Home Sales Price', value: '$170,000' },
+  { label: 'Average Home Sales Price', value: '$170,625' },
   { label: 'Average Homium SAM %', value: '40%' },
-  { label: 'Average AMI', value: '56% ($52,000/yr)' },
-  { label: 'Average First Lien Rate', value: '8.07%' },
+  { label: 'Average AMI', value: '57% ($51,951/yr)' },
+  { label: 'Average First Lien Rate', value: '6.21%' },
   { label: 'Average First Lien LTV', value: '53%' },
-  { label: 'Average FICO Score', value: '709' },
-  { label: 'Average Monthly Income', value: '$4,386' },
-  { label: 'Average Front Ratio', value: '19%' },
+  { label: 'Average FICO Score', value: '702' },
+  { label: 'Average Monthly Income', value: '$4,329' },
+  { label: 'Average Front Ratio', value: '15%' },
   { label: 'Average Back Ratio', value: '32%' },
-  { label: 'Avg Monthly PITI + Maintenance', value: '$964' },
+  { label: 'Avg Monthly PITI + Maintenance', value: '$948' },
 ]
 
 const UDF_METRICS = [
