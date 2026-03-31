@@ -551,7 +551,7 @@ function geoDistributionPage(data: ProformaData): string {
   const fundName = fund.name || data.programName;
 
   const colors = [GREEN, DARK, GREEN_LIGHT, '#5BA37E', '#2E6046', '#4A9268'];
-  const isCompact = geoBreakdown.length > 4;
+  const isCompact = geoBreakdown.length > 6;
 
   // ── Resolve county FIPS and build allocations ──
   const countyAllocations: Record<string, { pct: number; color: string }> = {};
@@ -571,86 +571,58 @@ function geoDistributionPage(data: ProformaData): string {
         color: colors[i % colors.length],
       };
     }
-    // If FIPS unresolved → that geo won't highlight on map (stacked bar + table still show it)
+    // If FIPS unresolved → that geo won't highlight on map (table still shows it)
   });
 
-  // ── Affordability ratios ──
-  const affordData = geoBreakdown.map((gb, i) => ({
-    label: gb.geo.geoLabel,
-    ratio: gb.geo.medianHomeValue / gb.geo.medianIncome,
-    color: colors[i % colors.length],
-    allocationPct: gb.geo.allocationPct,
-    homeowners: gb.totalHomeowners,
-  }));
-  const maxRatio = Math.max(...affordData.map(d => d.ratio));
-  const minRatio = Math.min(...affordData.map(d => d.ratio));
   const uniqueStates = new Set(geoBreakdown.map(gb => gb.geo.state).filter(Boolean));
-
-  // ── Stacked allocation bar ──
-  const barSegments = geoBreakdown.map((gb, i) => {
-    const pct = gb.geo.allocationPct * 100;
-    const shortLabel = gb.geo.geoLabel.replace(/ County$/i, '');
-    let labelText: string;
-    if (pct >= 10) {
-      labelText = `${shortLabel} ${Math.round(pct)}%`;
-    } else {
-      labelText = `${Math.round(pct)}%`;
-    }
-    return `<div style="width:${pct}%;background:${colors[i % colors.length]};display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;font-family:Ubuntu,sans-serif;white-space:nowrap;overflow:hidden;padding:0 4px">${labelText}</div>`;
-  }).join('');
-
-  const stackedBar = `<div style="display:flex;height:32px;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">${barSegments}</div>`;
+  const totalHOs = geoBreakdown.reduce((s, gb) => s + gb.totalHomeowners, 0);
+  const totalCapital = fund.raise.totalRaise;
 
   // ── Portfolio Snapshot ──
   const snapshot = `<div style="background:${CREAM};border:1px solid ${BORDER};border-radius:12px;padding:20px 24px">
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:${GREEN};margin-bottom:12px">Portfolio Snapshot</div>
     <div style="font-family:'Taviraj',serif;font-size:28px;font-weight:600;color:${DARK};line-height:1.2">${geoBreakdown.length} <span style="font-size:14px;font-weight:400;color:${GRAY}">markets</span> · ${uniqueStates.size} <span style="font-size:14px;font-weight:400;color:${GRAY}">${uniqueStates.size === 1 ? 'state' : 'states'}</span></div>
-    <div style="font-size:14px;color:${DARK};margin-top:8px;font-weight:500">${minRatio.toFixed(1)}×–${maxRatio.toFixed(1)}× <span style="color:${GRAY};font-weight:400">affordability range</span></div>
+    <div style="font-size:14px;color:${DARK};margin-top:8px;font-weight:500">${fmtN(totalHOs)} <span style="color:${GRAY};font-weight:400">homeowners</span> · ${fmt(totalCapital, 0)} <span style="color:${GRAY};font-weight:400">deployed</span></div>
   </div>`;
 
-  // ── Affordability bars (standalone for ≤6 geos) ──
-  const affordBars = affordData.map(d => {
-    const barW = (d.ratio / maxRatio) * 100;
-    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <div style="width:130px;font-size:12px;font-weight:600;color:${DARK};text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.label}</div>
-      <div style="flex:1;height:18px;background:#f0f0ec;border-radius:4px;overflow:hidden">
-        <div style="width:${barW}%;height:100%;background:${d.color};border-radius:4px"></div>
-      </div>
-      <div style="width:40px;font-size:12px;font-weight:700;color:${DARK}">${d.ratio.toFixed(1)}×</div>
-    </div>`;
+  // ── Per-geo summary stats (replaces affordability bars + stacked allocation bar) ──
+  const geoStatsRows = geoBreakdown.map((gb, i) => {
+    return `<tr>
+      <td style="padding:4px 6px;font-size:12px;white-space:nowrap"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${colors[i % colors.length]};margin-right:6px;vertical-align:middle"></span>${gb.geo.geoLabel}</td>
+      <td style="padding:4px 6px;font-size:12px;text-align:right">${fmtP(gb.geo.allocationPct, 0)}</td>
+      <td style="padding:4px 6px;font-size:12px;text-align:right">${fmt(gb.geo.medianIncome, 0)}</td>
+      <td style="padding:4px 6px;font-size:12px;text-align:right">${fmt(gb.geo.medianHomeValue, 0)}</td>
+      <td style="padding:4px 6px;font-size:12px;text-align:right">${fmtN(gb.totalHomeowners)}</td>
+    </tr>`;
   }).join('');
 
-  const affordCard = `<div style="margin-top:16px">
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:${GRAY};margin-bottom:8px">Affordability Index</div>
-    ${affordBars}
+  const geoStatsHeaderStyle = `font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${GRAY};padding:4px 6px;border-bottom:1px solid ${BORDER}`;
+  const geoStatsCard = `<div style="margin-top:16px">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:${GRAY};margin-bottom:8px">Market Summary</div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>
+        <th style="${geoStatsHeaderStyle};text-align:left">Geography</th>
+        <th style="${geoStatsHeaderStyle};text-align:right">Alloc</th>
+        <th style="${geoStatsHeaderStyle};text-align:right">Income</th>
+        <th style="${geoStatsHeaderStyle};text-align:right">Home</th>
+        <th style="${geoStatsHeaderStyle};text-align:right">HOs</th>
+      </tr></thead>
+      <tbody>${geoStatsRows}</tbody>
+    </table>
   </div>`;
 
-  // ── Scenario tables (only for ≤4 geos) ──
-  const scenarioBlocks = geoBreakdown.length <= 4 ? geoBreakdown.map((gb, i) => {
-    const rows = gb.scenarioResults.map(sr => {
-      const ho = sr.cohorts.reduce((s: number, c: any) => s + c.homeownerCount, 0);
-      return `<tr>
-        <td style="padding:4px 10px;font-weight:600">${sr.scenario.name}</td>
-        <td style="padding:4px 10px;text-align:right">${fmtN(ho)}</td>
-        <td style="padding:4px 10px;text-align:right">${fmt(sr.scenario.medianIncome)}</td>
-        <td style="padding:4px 10px;text-align:right">${fmt(sr.scenario.medianHomeValue)}</td>
-      </tr>`;
-    }).join('');
-    return `<div style="flex:1;min-width:0">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:${colors[i % colors.length]};margin-bottom:6px">${gb.geo.geoLabel}</div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr style="border-bottom:1px solid ${BORDER}"><th style="text-align:left;padding:4px 10px;font-size:10px;color:${GRAY}">Scenario</th><th style="text-align:right;padding:4px 10px;font-size:10px;color:${GRAY}">HOs</th><th style="text-align:right;padding:4px 10px;font-size:10px;color:${GRAY}">Income</th><th style="text-align:right;padding:4px 10px;font-size:10px;color:${GRAY}">Home</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
-  }).join('') : '';
+  // ── Scenario tables (for ≤6 geos) ──
+  const isSmallGeoCount = geoBreakdown.length <= 6;
+  const scenarioFontSize = geoBreakdown.length <= 4 ? '12px' : '11px';
+  const scenarioPad = geoBreakdown.length <= 4 ? '4px 10px' : '3px 6px';
 
   // ── Compact table for 7+ geos (with inline affordability bars) ──
   const useTwoCol = geoBreakdown.length >= 13;
   const fontSize = geoBreakdown.length >= 13 ? '11px' : '12px';
+  const compactMaxRatio = Math.max(...geoBreakdown.map(gb => gb.geo.medianHomeValue / gb.geo.medianIncome), 0.01);
   const compactRows = geoBreakdown.map((gb, i) => {
     const ratio = gb.geo.medianHomeValue / gb.geo.medianIncome;
-    const barW = (ratio / maxRatio) * 100;
+    const barW = (ratio / compactMaxRatio) * 100;
     return `<tr>
       <td style="padding:5px 8px;font-size:${fontSize}"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${colors[i % colors.length]};margin-right:6px;vertical-align:middle"></span>${gb.geo.geoLabel}</td>
       <td style="padding:5px 8px;text-align:right;font-size:${fontSize};font-weight:600">${fmtP(gb.geo.allocationPct, 0)}</td>
@@ -682,7 +654,7 @@ function geoDistributionPage(data: ProformaData): string {
 
   // ── Layout: branch on geo count ──
   if (isCompact) {
-    // 7+ geos: full-width map on top, snapshot + bar + compact table below
+    // 7+ geos: full-width map on top, snapshot + compact table below
     const mapSvg = generateGeoMapSVG(countyAllocations, highlightedStates, 1350, 280);
     return `
     <div class="page" style="background:#fff">
@@ -692,8 +664,6 @@ function geoDistributionPage(data: ProformaData): string {
         <div style="background:${CREAM};border:1px solid ${BORDER};border-radius:12px;padding:10px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;overflow:hidden">
           ${mapSvg}
         </div>
-
-        <div style="margin-bottom:12px">${stackedBar}</div>
 
         <div style="display:flex;gap:20px;flex:1">
           <div style="flex:0 0 200px;display:flex;flex-direction:column;gap:12px">
@@ -709,8 +679,34 @@ function geoDistributionPage(data: ProformaData): string {
     </div>`;
   }
 
-  // ≤6 geos: map left + snapshot/affordability right, bar below, scenario tables if ≤4
+  // ≤6 geos: map left + snapshot/stats right, scenario tables below
   const mapSvg = generateGeoMapSVG(countyAllocations, highlightedStates, 640, 340);
+
+  const scenarioSection = isSmallGeoCount ? (() => {
+    const perRow = geoBreakdown.length <= 3 ? geoBreakdown.length : 3;
+    const widthPct = `calc(${(100 / perRow).toFixed(1)}% - ${Math.ceil(24 * (perRow - 1) / perRow)}px)`;
+    const wrappedBlocks = geoBreakdown.map((gb, i) => {
+      const rows = gb.scenarioResults.map(sr => {
+        const ho = sr.cohorts.reduce((s: number, c: any) => s + c.homeownerCount, 0);
+        return `<tr>
+          <td style="padding:${scenarioPad};font-weight:600">${sr.scenario.name}</td>
+          <td style="padding:${scenarioPad};text-align:right">${fmtN(ho)}</td>
+          <td style="padding:${scenarioPad};text-align:right">${fmt(sr.scenario.medianIncome)}</td>
+          <td style="padding:${scenarioPad};text-align:right">${fmt(sr.scenario.medianHomeValue)}</td>
+        </tr>`;
+      }).join('');
+      return `<div style="flex:0 0 ${widthPct};min-width:0">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:${colors[i % colors.length]};margin-bottom:6px">${gb.geo.geoLabel}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:${scenarioFontSize}">
+          <thead><tr style="border-bottom:1px solid ${BORDER}"><th style="text-align:left;padding:${scenarioPad};font-size:10px;color:${GRAY}">Scenario</th><th style="text-align:right;padding:${scenarioPad};font-size:10px;color:${GRAY}">HOs</th><th style="text-align:right;padding:${scenarioPad};font-size:10px;color:${GRAY}">Income</th><th style="text-align:right;padding:${scenarioPad};font-size:10px;color:${GRAY}">Home</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+    return `<h3 class="dr-head">Scenario Detail by Geography</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:16px 24px;margin-top:10px">${wrappedBlocks}</div>`;
+  })() : '';
+
   return `
     <div class="page" style="background:#fff">
       <div class="page-inner">
@@ -722,17 +718,11 @@ function geoDistributionPage(data: ProformaData): string {
           </div>
           <div style="flex:1;display:flex;flex-direction:column">
             ${snapshot}
-            ${affordCard}
+            ${geoStatsCard}
           </div>
         </div>
 
-        <div style="margin-bottom:16px">${stackedBar}</div>
-
-        ${geoBreakdown.length <= 4 ? `
-        <h3 class="dr-head">Scenario Detail by Geography</h3>
-        <div style="display:flex;gap:24px;margin-top:10px">
-          ${scenarioBlocks}
-        </div>` : ''}
+        ${scenarioSection}
 
         <div class="page-num">5</div>
       </div>
