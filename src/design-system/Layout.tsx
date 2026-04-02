@@ -214,17 +214,43 @@ export function Footer() {
               Shared appreciation mortgages that make homeownership accessible while creating sustainable returns.
             </p>
           </div>
-          <div className="font-body text-sm">
-            <p>&copy; {new Date().getFullYear()} Homium, Inc.</p>
+          <div className="font-body text-sm text-right">
+            <p>&copy; 2025 Homium, Inc. NMLS #2442369</p>
+            <p className="mt-1">Peter C. Gilbert, Chief Lending and Credit Officer, NMLS #136556</p>
+            <p className="mt-2">
+              For additional consumer information, please visit{' '}
+              <a
+                href="https://www.nmlsconsumeraccess.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/40 hover:text-white/60 transition-colors underline"
+              >
+                NMLSConsumerAccess.org
+              </a>
+            </p>
             <a
               href="https://www.homium.io"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-1 text-white/40 hover:text-white/60 transition-colors block"
+              className="mt-2 text-white/40 hover:text-white/60 transition-colors block"
             >
               homium.io
             </a>
           </div>
+        </div>
+        <div className="mt-10 pt-8 border-t border-white/10">
+          <p className="font-body text-xs text-white/40 leading-relaxed">
+            The material on this website is for informational purposes only and may not be used, published or redistributed without the prior written consent of Homium, LLC or its affiliates (collectively, &ldquo;Homium&rdquo;).
+          </p>
+          <p className="font-body text-xs text-white/40 leading-relaxed mt-4">
+            Nothing herein is an offer to sell or solicitation of an offer to purchase a security. Any such offer will only be made to qualified investors via a private placement memorandum in an offering exempt from registration with the Securities and Exchange Commission (&ldquo;SEC&rdquo;). This material and the digital assets mentioned herein have not been approved or disapproved by the SEC or any state securities regulatory authority.
+          </p>
+          <p className="font-body text-xs text-white/40 leading-relaxed mt-4">
+            The information and opinions expressed herein are provided in good faith and with a reasonable basis, however, Homium makes no representations and gives no warranties of any nature including but not limited to the accuracy, relevance or completeness of such information. Likewise, certain information herein has been obtained from third parties believed to be reliable, but we do not warrant the accuracy or completeness of such information. We have made certain assumptions in conducting this analysis that we believe to be reasonable, but other assumptions might produce different results. The details of all assumptions are available upon request.
+          </p>
+          <p className="font-body text-xs text-white/40 leading-relaxed mt-4">
+            This material does not take into account the investment objectives, financial situation or needs of particular investors. Investors should conduct their own independent diligence and assessment and consider whether this is suitable for your particular circumstances and consult with relevant professional advisors before investing.
+          </p>
         </div>
       </Container>
     </footer>
