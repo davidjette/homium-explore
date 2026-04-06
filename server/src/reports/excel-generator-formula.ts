@@ -16,6 +16,7 @@ import { ProformaData } from './proforma-report';
 import {
   FundConfig, ScenarioResult, FundYearState, GeoBreakdownResult, GeoAllocation,
 } from '../engine/types';
+import { TopOffYearState } from '../engine/topoff-calculator';
 
 // ── Styling constants (matches PDF: GREEN #3D7A58, DARK #1A2930) ──
 const GREEN = '3D7A58';
@@ -1462,6 +1463,106 @@ function buildGeoSummarySheet(
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// TOP-OFF / AFFORDABILITY SENSITIVITY SHEET
+// ══════════════════════════════════════════════════════════════════════════
+
+function buildTopOffSheet(wb: ExcelJS.Workbook, fund: FundConfig, topOff: TopOffYearState[]) {
+  const ws = wb.addWorksheet('Affordability Sensitivity');
+
+  // Title
+  ws.getCell(1, 1).value = 'Affordability Sensitivity Analysis';
+  ws.getCell(1, 1).font = TITLE_FONT;
+  ws.getCell(2, 1).value = 'Top-off capital needed when HPA outpaces wage growth';
+  ws.getCell(2, 1).font = SUBTITLE_FONT;
+
+  // Assumptions block
+  setBoldLabel(ws, 4, 1, 'Assumptions');
+
+  const midScenario = fund.scenarios.find(s => s.name === 'MID') || fund.scenarios[0];
+
+  const assumptions: Array<[number, string, any, string?]> = [
+    [5, 'Base Year', fund.raise.baseYear],
+    [6, 'Home Price Appreciation (HPA)', fund.assumptions.hpaPct, PCT2],
+    [7, 'Wage Growth', fund.assumptions.wageGrowthPct, PCT2],
+    [8, 'Interest Rate', fund.assumptions.interestRate, PCT2],
+    [9, 'Max Front Ratio (DTI)', fund.program.maxFrontRatio, PCT],
+    [10, 'Down Payment %', fund.program.downPaymentPct, PCT],
+    [11, 'Homium SA%', fund.program.homiumSAPct, PCT],
+    [12, 'Fixed Home Count', fund.program.fixedHomeCount || 0, NUM],
+    [13, 'Base Home Value (MID)', midScenario.medianHomeValue, CURRENCY],
+    [14, 'Base Income (MID)', midScenario.medianIncome, CURRENCY],
+    [15, 'Base SAM Amount', midScenario.medianHomeValue * fund.program.homiumSAPct, CURRENCY],
+    [16, 'Tax & Insurance Rate', 0.0085, PCT4],
+  ];
+
+  for (const [r, label, value, fmt] of assumptions) {
+    setLabel(ws, r, 1, label);
+    setInputVal(ws, r, 2, value, fmt);
+  }
+
+  // Schedule header
+  const HDR_ROW = 19;
+  const headers = [
+    'Year', 'Calendar Year', 'Home Value', '80% AMI Income',
+    'Max Affordable Mortgage', 'SAM Required', 'SAM Baseline',
+    'Recycled / Home', 'Top-Off / Home', 'Exits',
+    'Annual Top-Off', 'Cumulative Top-Off',
+  ];
+  setBoldLabel(ws, 18, 1, 'Top-Off Schedule');
+  for (let i = 0; i < headers.length; i++) {
+    ws.getCell(HDR_ROW, i + 1).value = headers[i];
+  }
+  applyHeaderRow(ws, HDR_ROW, 1, headers.length);
+
+  // Schedule data
+  const fmts = [
+    NUM, NUM, CURRENCY, CURRENCY,
+    CURRENCY, CURRENCY, CURRENCY,
+    CURRENCY, CURRENCY, NUM,
+    CURRENCY, CURRENCY,
+  ];
+
+  for (let i = 0; i < topOff.length; i++) {
+    const r = HDR_ROW + 1 + i;
+    const y = topOff[i];
+    const vals = [
+      y.year, y.calendarYear, y.homeValue, y.income80AMI,
+      y.maxAffordableMortgage, y.samRequired, y.samBaseline,
+      y.recycledPerHome, y.topOffPerHome, y.exitsThisYear,
+      y.annualTopOff, y.cumulativeTopOff,
+    ];
+    for (let c = 0; c < vals.length; c++) {
+      setVal(ws, r, c + 1, vals[c], fmts[c]);
+    }
+  }
+
+  // Summary metrics
+  const sumStartRow = HDR_ROW + 1 + topOff.length + 2;
+  const last = topOff[topOff.length - 1];
+  const totalTopOff = last.cumulativeTopOff;
+  const avgAnnual = totalTopOff / topOff.length;
+  const peakYear = topOff.reduce((max, y) => y.annualTopOff > max.annualTopOff ? y : max, topOff[0]);
+
+  setBoldLabel(ws, sumStartRow, 1, 'Summary');
+  setLabel(ws, sumStartRow + 1, 1, 'Total Top-Off Capital');
+  setVal(ws, sumStartRow + 1, 2, totalTopOff, CURRENCY);
+  setLabel(ws, sumStartRow + 2, 1, 'Peak Year');
+  setVal(ws, sumStartRow + 2, 2, peakYear.calendarYear, NUM);
+  setLabel(ws, sumStartRow + 3, 1, 'Peak Annual Top-Off');
+  setVal(ws, sumStartRow + 3, 2, peakYear.annualTopOff, CURRENCY);
+  setLabel(ws, sumStartRow + 4, 1, 'Average Annual Top-Off');
+  setVal(ws, sumStartRow + 4, 2, avgAnnual, CURRENCY);
+
+  // Column widths
+  ws.getColumn(1).width = 26;
+  ws.getColumn(2).width = 16;
+  for (let c = 3; c <= headers.length; c++) ws.getColumn(c).width = 20;
+  ws.views = [{ state: 'frozen', xSplit: 0, ySplit: HDR_ROW }];
+
+  return ws;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // MAIN EXPORT
 // ══════════════════════════════════════════════════════════════════════════
 
@@ -1510,6 +1611,11 @@ export async function generateFormulaExcel(data: ProformaData): Promise<Buffer> 
   // Multi-geo: Geo Summary with cross-sheet refs
   if (isMultiGeo && geoSheetNames) {
     buildGeoSummarySheet(wb, fund, geoBreakdown, geoSheetNames);
+  }
+
+  // Affordability Sensitivity (conditional — only when topOff data exists)
+  if (data.topOff && data.topOff.length) {
+    buildTopOffSheet(wb, fund, data.topOff);
   }
 
   const arrayBuffer = await wb.xlsx.writeBuffer();
