@@ -1468,6 +1468,7 @@ function buildGeoSummarySheet(
 
 function buildTopOffSheet(wb: ExcelJS.Workbook, fund: FundConfig, topOff: TopOffYearState[]) {
   const ws = wb.addWorksheet('Affordability Sensitivity');
+  const numYears = topOff.length; // typically 30
 
   // Title
   ws.getCell(1, 1).value = 'Affordability Sensitivity Analysis';
@@ -1475,7 +1476,7 @@ function buildTopOffSheet(wb: ExcelJS.Workbook, fund: FundConfig, topOff: TopOff
   ws.getCell(2, 1).value = 'Top-off capital needed when HPA outpaces wage growth';
   ws.getCell(2, 1).font = SUBTITLE_FONT;
 
-  // Assumptions block
+  // ── Assumptions block (B5:B16 — all editable inputs) ──
   setBoldLabel(ws, 4, 1, 'Assumptions');
 
   const midScenario = fund.scenarios.find(s => s.name === 'MID') || fund.scenarios[0];
@@ -1491,7 +1492,6 @@ function buildTopOffSheet(wb: ExcelJS.Workbook, fund: FundConfig, topOff: TopOff
     [12, 'Fixed Home Count', fund.program.fixedHomeCount || 0, NUM],
     [13, 'Base Home Value (MID)', midScenario.medianHomeValue, CURRENCY],
     [14, 'Base Income (MID)', midScenario.medianIncome, CURRENCY],
-    [15, 'Base SAM Amount', midScenario.medianHomeValue * fund.program.homiumSAPct, CURRENCY],
     [16, 'Tax & Insurance Rate', 0.0085, PCT4],
   ];
 
@@ -1500,12 +1500,20 @@ function buildTopOffSheet(wb: ExcelJS.Workbook, fund: FundConfig, topOff: TopOff
     setInputVal(ws, r, 2, value, fmt);
   }
 
-  // Schedule header
+  // Base SAM = formula referencing Home Value * SA%
+  setLabel(ws, 15, 1, 'Base SAM Amount');
+  setFormula(ws, 15, 2, 'B13*B11', CURRENCY);
+
+  // ── Schedule headers ──
+  // Columns: A=Year, B=CalYear, C=HomeValue, D=Income, E=MaxPITI/mo, F=TaxIns/mo,
+  //          G=MaxPI/mo, H=MaxMortgage, I=DownPayment, J=SAMRequired, K=SAMBaseline,
+  //          L=Recycled/Home, M=TopOff/Home, N=Exit%, O=Exits, P=AnnualTopOff, Q=CumulativeTopOff
   const HDR_ROW = 19;
   const headers = [
     'Year', 'Calendar Year', 'Home Value', '80% AMI Income',
-    'Max Affordable Mortgage', 'SAM Required', 'SAM Baseline',
-    'Recycled / Home', 'Top-Off / Home', 'Exits',
+    'Max PITI / mo', 'Tax & Ins / mo', 'Max P&I / mo',
+    'Max Affordable Mortgage', 'Down Payment', 'SAM Required', 'SAM Baseline',
+    'Recycled / Home', 'Top-Off / Home', 'Exit %', 'Exits',
     'Annual Top-Off', 'Cumulative Top-Off',
   ];
   setBoldLabel(ws, 18, 1, 'Top-Off Schedule');
@@ -1514,49 +1522,105 @@ function buildTopOffSheet(wb: ExcelJS.Workbook, fund: FundConfig, topOff: TopOff
   }
   applyHeaderRow(ws, HDR_ROW, 1, headers.length);
 
-  // Schedule data
-  const fmts = [
+  // Column format map
+  const colFmts = [
     NUM, NUM, CURRENCY, CURRENCY,
     CURRENCY, CURRENCY, CURRENCY,
-    CURRENCY, CURRENCY, NUM,
+    CURRENCY, CURRENCY, CURRENCY, CURRENCY,
+    CURRENCY, CURRENCY, PCT4, NUM,
     CURRENCY, CURRENCY,
   ];
 
-  for (let i = 0; i < topOff.length; i++) {
-    const r = HDR_ROW + 1 + i;
+  const FIRST = HDR_ROW + 1; // row 20
+  const LAST = FIRST + numYears - 1; // row 49
+
+  for (let i = 0; i < numYears; i++) {
+    const r = FIRST + i;
     const y = topOff[i];
-    const vals = [
-      y.year, y.calendarYear, y.homeValue, y.income80AMI,
-      y.maxAffordableMortgage, y.samRequired, y.samBaseline,
-      y.recycledPerHome, y.topOffPerHome, y.exitsThisYear,
-      y.annualTopOff, y.cumulativeTopOff,
-    ];
-    for (let c = 0; c < vals.length; c++) {
-      setVal(ws, r, c + 1, vals[c], fmts[c]);
+
+    // A: Year (static)
+    setVal(ws, r, 1, y.year, NUM);
+
+    // B: Calendar Year = $B$5 + A{r}
+    setFormula(ws, r, 2, `$B$5+A${r}`, NUM);
+
+    // C: Home Value = $B$13 * (1+$B$6)^A{r}
+    setFormula(ws, r, 3, `$B$13*(1+$B$6)^A${r}`, CURRENCY);
+
+    // D: 80% AMI Income = $B$14 * (1+$B$7)^A{r}
+    setFormula(ws, r, 4, `$B$14*(1+$B$7)^A${r}`, CURRENCY);
+
+    // E: Max PITI / mo = (D{r}/12) * $B$9
+    setFormula(ws, r, 5, `(D${r}/12)*$B$9`, CURRENCY);
+
+    // F: Tax & Ins / mo = (C{r}*$B$16)/12
+    setFormula(ws, r, 6, `(C${r}*$B$16)/12`, CURRENCY);
+
+    // G: Max P&I / mo = MAX(0, E{r}-F{r})
+    setFormula(ws, r, 7, `MAX(0,E${r}-F${r})`, CURRENCY);
+
+    // H: Max Affordable Mortgage = -PV(rate/12, 360, maxPI)
+    setFormula(ws, r, 8, `IF($B$8=0,G${r}*360,-PV($B$8/12,360,G${r}))`, CURRENCY);
+
+    // I: Down Payment = C{r} * $B$10
+    setFormula(ws, r, 9, `C${r}*$B$10`, CURRENCY);
+
+    // J: SAM Required = MAX(0, C{r} - I{r} - H{r})
+    setFormula(ws, r, 10, `MAX(0,C${r}-I${r}-H${r})`, CURRENCY);
+
+    // K: SAM Baseline = C{r} * $B$11
+    setFormula(ws, r, 11, `C${r}*$B$11`, CURRENCY);
+
+    // L: Recycled / Home = $B$15 * (1+$B$6)^A{r}
+    setFormula(ws, r, 12, `$B$15*(1+$B$6)^A${r}`, CURRENCY);
+
+    // M: Top-Off / Home = MAX(0, J{r} - L{r})
+    setFormula(ws, r, 13, `MAX(0,J${r}-L${r})`, CURRENCY);
+
+    // N: Exit % (static from payoff schedule)
+    const payoffEntry = fund.payoffSchedule.find(p => p.year === y.year);
+    setVal(ws, r, 14, payoffEntry ? payoffEntry.annualPct : 0, PCT4);
+
+    // O: Exits = ROUND($B$12 * N{r}, 0)
+    setFormula(ws, r, 15, `ROUND($B$12*N${r},0)`, NUM);
+
+    // P: Annual Top-Off = M{r} * O{r}
+    setFormula(ws, r, 16, `M${r}*O${r}`, CURRENCY);
+
+    // Q: Cumulative Top-Off
+    if (i === 0) {
+      setFormula(ws, r, 17, `P${r}`, CURRENCY);
+    } else {
+      setFormula(ws, r, 17, `Q${r - 1}+P${r}`, CURRENCY);
+    }
+
+    // Apply formats to formula cells
+    for (let c = 1; c <= colFmts.length; c++) {
+      const cell = ws.getCell(r, c);
+      if (colFmts[c - 1]) cell.numFmt = colFmts[c - 1];
     }
   }
 
-  // Summary metrics
-  const sumStartRow = HDR_ROW + 1 + topOff.length + 2;
-  const last = topOff[topOff.length - 1];
-  const totalTopOff = last.cumulativeTopOff;
-  const avgAnnual = totalTopOff / topOff.length;
-  const peakYear = topOff.reduce((max, y) => y.annualTopOff > max.annualTopOff ? y : max, topOff[0]);
-
+  // ── Summary metrics with formulas ──
+  const sumStartRow = LAST + 3;
   setBoldLabel(ws, sumStartRow, 1, 'Summary');
+
   setLabel(ws, sumStartRow + 1, 1, 'Total Top-Off Capital');
-  setVal(ws, sumStartRow + 1, 2, totalTopOff, CURRENCY);
-  setLabel(ws, sumStartRow + 2, 1, 'Peak Year');
-  setVal(ws, sumStartRow + 2, 2, peakYear.calendarYear, NUM);
-  setLabel(ws, sumStartRow + 3, 1, 'Peak Annual Top-Off');
-  setVal(ws, sumStartRow + 3, 2, peakYear.annualTopOff, CURRENCY);
+  setFormula(ws, sumStartRow + 1, 2, `Q${LAST}`, CURRENCY);
+
+  setLabel(ws, sumStartRow + 2, 1, 'Peak Annual Top-Off');
+  setFormula(ws, sumStartRow + 2, 2, `MAX(P${FIRST}:P${LAST})`, CURRENCY);
+
+  setLabel(ws, sumStartRow + 3, 1, 'Peak Year');
+  setFormula(ws, sumStartRow + 3, 2, `INDEX(B${FIRST}:B${LAST},MATCH(MAX(P${FIRST}:P${LAST}),P${FIRST}:P${LAST},0))`, NUM);
+
   setLabel(ws, sumStartRow + 4, 1, 'Average Annual Top-Off');
-  setVal(ws, sumStartRow + 4, 2, avgAnnual, CURRENCY);
+  setFormula(ws, sumStartRow + 4, 2, `AVERAGE(P${FIRST}:P${LAST})`, CURRENCY);
 
   // Column widths
   ws.getColumn(1).width = 26;
   ws.getColumn(2).width = 16;
-  for (let c = 3; c <= headers.length; c++) ws.getColumn(c).width = 20;
+  for (let c = 3; c <= headers.length; c++) ws.getColumn(c).width = 18;
   ws.views = [{ state: 'frozen', xSplit: 0, ySplit: HDR_ROW }];
 
   return ws;
