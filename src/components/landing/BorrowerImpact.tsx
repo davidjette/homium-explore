@@ -16,14 +16,14 @@ const THHI_METRICS = [
 
 const UDF_METRICS = [
   { label: 'Average Home Sales Price', value: '$433,833' },
-  { label: 'Average Homium SAM %', value: '20%' },
+  { label: 'Average Homium SAM %', value: '30%' },
   { label: 'Average AMI', value: '87%' },
   { label: 'Average First Lien Rate', value: '6.42%' },
-  { label: 'Average First Lien LTV', value: '46%' },
+  { label: 'Average First Lien LTV', value: '66%' },
   { label: 'Average FICO Score', value: '743' },
   { label: 'Average Monthly Income', value: '$6,912' },
   { label: 'Average Front Ratio', value: '27%' },
-  { label: 'Average Back Ratio', value: '45%' },
+  { label: 'Average Back Ratio', value: '43%' },
   { label: 'Avg Monthly PITI + Maintenance', value: '$2,195' },
 ]
 
