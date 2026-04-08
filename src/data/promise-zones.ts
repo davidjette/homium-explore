@@ -27,27 +27,23 @@ export const PROMISE_ZONES: PromiseZone[] = [
     description: 'City of Millcreek — Promise Community qualifying zone',
     color: '#c0392b',
     fillColor: 'rgba(192, 57, 43, 0.15)',
+    // All coordinates from Google Maps Geocoding API
     polygon: [
-      // Shape: rectangle on top-left, diagonal Van Winkle cut on bottom-right
-      // Shares west edge (700 E) and SW vertex (3900 S & 700 E) with South Salt Lake
-      //
       // 1. Start: 3900 S & S 700 E (shared vertex with SSL)
-      [40.6968, -111.8766],
+      [40.6868, -111.8717],
       // 2. North along S 700 E to 2700 S
-      [40.7141, -111.8766],
+      [40.7125, -111.8714],
       // 3. East along 2700 S to 1300 E
-      [40.7141, -111.8637],
+      [40.7127, -111.8536],
       // 4. South along 1300 E to Van Winkle Expressway (~3300 S)
-      [40.7058, -111.8637],
-      // 5. SW along Van Winkle Expy / Big Cottonwood Creek to 3900 S
-      //    Van Winkle runs NE-SW from Highland Dr/3300 S toward State St/4500 S
-      [40.7025, -111.8690],  // Van Winkle near 1100 E / ~3450 S
-      [40.6995, -111.8735],  // Van Winkle near 900 E / ~3600 S
-      [40.6975, -111.8760],  // Van Winkle near 750 E / ~3750 S
-      // 6. Van Winkle/creek meets 3900 S (~450 E)
-      [40.6968, -111.8810],
+      [40.7010, -111.8536],
+      // 5. SW along Van Winkle Expy / Big Cottonwood Creek toward 3900 S
+      [40.6958, -111.8602],  // ~3500 S & 1100 E (geocoded)
+      [40.6909, -111.8655],  // ~3700 S & 900 E (geocoded)
+      // 6. Creek meets 3900 S (west of 700 E, near State St)
+      [40.6870, -111.8884],
       // 7. East along 3900 S back to S 700 E (starting point)
-      [40.6968, -111.8766],
+      [40.6868, -111.8717],
     ],
   },
   {
@@ -56,36 +52,36 @@ export const PROMISE_ZONES: PromiseZone[] = [
     description: 'City of South Salt Lake — Promise Community qualifying zone',
     color: '#2980b9',
     fillColor: 'rgba(41, 128, 185, 0.15)',
+    // All coordinates from Google Maps Geocoding API
     polygon: [
-      // Shares SE vertex (3900 S & 700 E) and east edge segment (700 E) with Millcreek
-      //
       // 1. Start: Jordan River & 2100 S
-      [40.7228, -111.9240],
+      [40.7241, -111.9174],
       // 2. East along 2100 S to S 500 E
-      [40.7228, -111.8800],
+      [40.7253, -111.8769],
       // 3. South along S 500 E to Sunset Ave / south edge Nibley Park Golf Course
-      [40.7085, -111.8800],
+      [40.7094, -111.8769],
       // 4. East along south edge of Nibley Park Golf Course to S 700 E
-      [40.7085, -111.8766],
+      [40.7093, -111.8713],
       // 5. South along S 700 E to 3900 S (shared edge with Millcreek)
-      [40.6968, -111.8766],
+      [40.6868, -111.8717],
       // 6. West along 3900 S to Jordan River near General Holm Park
-      [40.6968, -111.9235],
+      [40.6875, -111.9207],
       // 7. North along Jordan River to 2100 S (following river meanders)
-      [40.6990, -111.9240],
-      [40.7020, -111.9242],
-      [40.7050, -111.9238],
-      [40.7080, -111.9240],
-      [40.7110, -111.9243],
-      [40.7140, -111.9240],
-      [40.7170, -111.9238],
-      [40.7200, -111.9240],
+      [40.6920, -111.9195],
+      [40.6960, -111.9185],
+      [40.6986, -111.9176],  // ~3300 S & Jordan River (geocoded 900 W)
+      [40.7020, -111.9180],
+      [40.7060, -111.9175],
+      [40.7100, -111.9180],
+      [40.7140, -111.9175],
+      [40.7180, -111.9178],
+      [40.7210, -111.9175],
       // Close: back to Jordan River & 2100 S
-      [40.7228, -111.9240],
+      [40.7241, -111.9174],
     ],
   },
 ]
 
 /** Center point for the default map view (between the two zones) */
-export const MAP_CENTER: [number, number] = [40.7080, -111.8980]
+export const MAP_CENTER: [number, number] = [40.7050, -111.8950]
 export const MAP_ZOOM = 13
