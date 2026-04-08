@@ -35,15 +35,16 @@ export const PROMISE_ZONES: PromiseZone[] = [
       [40.7125, -111.8714],
       // 3. East along 2700 S to 1300 E
       [40.7127, -111.8536],
-      // 4. South along 1300 E to Van Winkle Expressway (~3580 S)
-      //    Van Winkle crosses 1300 E well south of 3300 S — near 3580 S
-      [40.6936, -111.8536],
-      // 5. SW along Van Winkle Expy / Big Cottonwood Creek toward 3900 S
-      [40.6920, -111.8580],  // Van Winkle ~3650 S / ~1200 E
-      [40.6909, -111.8655],  // ~3700 S & 900 E (geocoded)
-      [40.6890, -111.8730],  // ~3780 S & ~750 E
-      // 6. Creek meets 3900 S (west of 700 E, near State St)
-      [40.6870, -111.8884],
+      // 4. South along 1300 E to Van Winkle Expy / Murray-Holladay Rd (~4700 S)
+      //    1300 E extends far south — past 3900 S, past Holladay, to the expressway
+      [40.6743, -111.8541],  // 4500 S & 1300 E (geocoded)
+      [40.6651, -111.8629],  // Van Winkle & Murray-Holladay Rd (geocoded)
+      // 5. NW along Van Winkle Expy / Big Cottonwood Creek back to 3900 S
+      [40.6743, -111.8656],  // 4500 S & 900 E (geocoded)
+      [40.6803, -111.8655],  // 4200 S & ~900 E
+      [40.6871, -111.8655],  // 3900 S & 900 E (geocoded)
+      // 6. Creek/expressway meets 3900 S, continue west to State St
+      [40.6870, -111.8884],  // 3900 S & State St (geocoded)
       // 7. East along 3900 S back to S 700 E (starting point)
       [40.6868, -111.8717],
     ],
