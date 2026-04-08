@@ -13,33 +13,6 @@ import Admin from './pages/Admin'
 import Programs from './pages/Programs'
 import CheckAddress from './pages/tools/CheckAddress'
 
-function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useAuthContext()
-
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <p className="font-body text-lightGray">Loading...</p>
-    </div>
-  )
-
-  if (!isAuthenticated) return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <Container>
-        <div className="max-w-md mx-auto text-center">
-          <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-8 mx-auto mb-6" />
-          <H2>Sign in to continue</H2>
-          <Body className="mt-3 mb-8 text-lightGray">
-            Create a free account to design homeownership programs, run fund models, and export reports.
-          </Body>
-          <SignInModal />
-        </div>
-      </Container>
-    </div>
-  )
-
-  return <>{children}</>
-}
-
 function RequireActive({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isActive, loading, signOut } = useAuthContext()
 
