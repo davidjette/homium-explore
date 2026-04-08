@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from './Button';
 import { useAuthContext } from '../components/shared/AuthProvider';
@@ -64,6 +64,15 @@ export function ToolNav() {
             )}
             {isAuthenticated && isTeam && (
               <RouteLink to="/data" active={pathname === '/data'}>Data</RouteLink>
+            )}
+            {isAuthenticated && isTeam && (
+              <NavDropdown
+                label="Tools"
+                active={pathname.startsWith('/tools')}
+                items={[
+                  { label: 'UDF: Check Address', to: '/tools/check-address' },
+                ]}
+              />
             )}
             {isAuthenticated && isAdmin && (
               <RouteLink to="/admin" active={pathname === '/admin'}>Admin</RouteLink>
@@ -161,6 +170,54 @@ function AnchorLink({ href, children }: { href: string; children: ReactNode }) {
     >
       {children}
     </a>
+  );
+}
+
+function NavDropdown({ label, active, items }: {
+  label: string;
+  active: boolean;
+  items: { label: string; to: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`font-body font-bold text-[12px] uppercase tracking-[1.5px] transition-colors duration-200 cursor-pointer ${
+          active ? 'text-green' : 'text-gray hover:text-green'
+        }`}
+      >
+        {label}
+        <svg className="inline-block ml-1 w-3 h-3" viewBox="0 0 12 12" fill="currentColor">
+          <path d="M3 5l3 3 3-3" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-8 z-50 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[200px]">
+          {items.map(item => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="block px-4 py-2 font-body text-sm text-gray hover:bg-sectionAlt hover:text-dark transition-colors"
+              onClick={() => setOpen(false)}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

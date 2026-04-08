@@ -11,6 +11,7 @@ import Program from './pages/Program'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
 import Programs from './pages/Programs'
+import CheckAddress from './pages/tools/CheckAddress'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuthContext()
@@ -136,6 +137,9 @@ export default function App() {
           } />
           <Route path="/data" element={
             <RequireTeam><Programs /></RequireTeam>
+          } />
+          <Route path="/tools/check-address" element={
+            <RequireTeam><CheckAddress /></RequireTeam>
           } />
           <Route path="/admin" element={
             <RequireAdmin><Admin /></RequireAdmin>
