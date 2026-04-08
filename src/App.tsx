@@ -175,7 +175,7 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { pathname } = useLocation()
   const isLanding = pathname === '/'
-  const { needsProfile, isAuthenticated, loading } = useAuthContext()
+  const { needsProfile, isAuthenticated, isActive, loading, signOut, profile } = useAuthContext()
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -208,6 +208,31 @@ export default function App() {
 
       {/* Profile setup modal — shown after first OAuth sign-in */}
       {!loading && isAuthenticated && needsProfile && <ProfileSetupModal />}
+
+      {/* Pending approval overlay — shown after profile setup for registered users */}
+      {!loading && isAuthenticated && !needsProfile && profile && !isActive && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-dark/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-amber-50 flex items-center justify-center">
+              <svg className="w-8 h-8 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-7 mx-auto mb-4" />
+            <H2>Your account is under review</H2>
+            <Body className="mt-3 text-lightGray">
+              Thank you for registering! A Homium administrator will review your account shortly.
+              You'll receive an email once your account has been approved.
+            </Body>
+            <button
+              onClick={() => signOut()}
+              className="mt-8 font-body text-sm text-lightGray hover:text-dark underline cursor-pointer"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
