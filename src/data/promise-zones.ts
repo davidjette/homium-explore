@@ -28,36 +28,23 @@ export const PROMISE_ZONES: PromiseZone[] = [
     color: '#c0392b',
     fillColor: 'rgba(192, 57, 43, 0.15)',
     polygon: [
-      // Traced clockwise from northwest corner
-      // NW — near I-80 & State St / S 300 E
-      [40.7275, -111.8883],
-      // N — along ~2700 S eastward
-      [40.7275, -111.8830],
-      [40.7270, -111.8760], // 2700 S & 700 E
-      [40.7265, -111.8690], // 2700 S & 1100 E
-      // NE — curves north toward I-80 near Sugarhouse
-      [40.7280, -111.8580],
-      [40.7300, -111.8500], // near 2300 E / I-80
-      // E — south along foothills / 2300 E corridor
-      [40.7200, -111.8430],
-      [40.7140, -111.8350], // near Grandeur Peak / I-215
-      [40.7050, -111.8300],
-      // SE — curves southwest along I-215 / Holladay border
-      [40.6950, -111.8350],
-      [40.6890, -111.8430],
-      [40.6850, -111.8500],
-      // S — along ~3900 S / ~4500 S westward
-      [40.6870, -111.8600],
-      [40.6890, -111.8690],
-      [40.6900, -111.8760], // 3900 S & 700 E
-      [40.6900, -111.8830], // 3900 S & 300 E
-      // SW — back to State St / I-15 area
-      [40.6900, -111.8883], // 3900 S & State
-      // W — north along State St back to start
-      [40.7000, -111.8883],
-      [40.7100, -111.8883],
-      [40.7200, -111.8883],
-      [40.7275, -111.8883], // close the ring
+      // Clockwise from 3900 S & S 700 E
+      // 1. Start: 3900 S & S 700 E
+      [40.6955, -111.8747],
+      // 2. North along S 700 E to 2700 S
+      [40.7135, -111.8747],
+      // 3. East along 2700 S to 1300 E
+      [40.7135, -111.8613],
+      // 4. South along 1300 E to Van Winkle Expressway (~3350 S)
+      [40.7020, -111.8613],
+      // 5. Southwest along Van Winkle Expressway & Big Cottonwood Creek
+      [40.6995, -111.8655],
+      [40.6975, -111.8695],
+      [40.6960, -111.8725],
+      // 6. Van Winkle / creek meets 3900 S (~S 500 E area)
+      [40.6955, -111.8770],
+      // 7. East along 3900 S back to start
+      [40.6955, -111.8747],
     ],
   },
   {
@@ -67,37 +54,32 @@ export const PROMISE_ZONES: PromiseZone[] = [
     color: '#2980b9',
     fillColor: 'rgba(41, 128, 185, 0.15)',
     polygon: [
-      // Traced clockwise from northwest corner
-      // NW — near I-80 & I-15 junction
-      [40.7400, -111.9050],
-      // N — along I-80 eastward
-      [40.7380, -111.8980],
-      [40.7350, -111.8920],
-      [40.7330, -111.8883], // I-80 & State St
-      // NE — along State St / 500 E
-      [40.7320, -111.8830],
-      [40.7310, -111.8780], // near 500 E
-      // E — south along ~700 E / 900 E
-      [40.7280, -111.8760],
-      [40.7275, -111.8740], // meets Millcreek border area
-      // Jog — boundary follows 2700 S briefly
-      [40.7275, -111.8883], // 2700 S & State — shared with Millcreek
-      // SE — continues south along State to ~3300 S
-      [40.7050, -111.8883], // 3300 S & State
-      // S — west along ~3300 S / 3900 S
-      [40.7050, -111.8920],
-      [40.7000, -111.8970],
-      [40.6960, -111.9000], // near I-15 & 3900 S
-      // SW — along I-15 northward
-      [40.7050, -111.9030],
-      [40.7150, -111.9040],
-      [40.7250, -111.9045],
-      [40.7350, -111.9050],
-      [40.7400, -111.9050], // close the ring
+      // Clockwise from Jordan River & 2100 S
+      // 1. Start: Jordan River & 2100 S
+      [40.7225, -111.9030],
+      // 2. East along 2100 S to S 500 E
+      [40.7225, -111.8790],
+      // 3. South along S 500 E to Sunset Ave / south edge Nibley Park Golf Course
+      [40.7085, -111.8790],
+      // 4. East along south edge of Nibley Park Golf Course to S 700 E
+      [40.7085, -111.8747],
+      // 5. South along S 700 E to 3900 S
+      [40.6955, -111.8747],
+      // 6. West along 3900 S to Jordan River (General Holm Park)
+      [40.6955, -111.9025],
+      // 7. North along Jordan River to 2100 S (with river meanders)
+      [40.6990, -111.9035],
+      [40.7030, -111.9040],
+      [40.7070, -111.9035],
+      [40.7110, -111.9030],
+      [40.7150, -111.9035],
+      [40.7190, -111.9030],
+      // Close: back to Jordan River & 2100 S
+      [40.7225, -111.9030],
     ],
   },
 ]
 
 /** Center point for the default map view (between the two zones) */
-export const MAP_CENTER: [number, number] = [40.7100, -111.8850]
-export const MAP_ZOOM = 12
+export const MAP_CENTER: [number, number] = [40.7050, -111.8880]
+export const MAP_ZOOM = 13
