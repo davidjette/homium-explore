@@ -23,7 +23,9 @@ import {
   confirmUserEmail,
   deleteAuthUser,
   fetchAuditLog,
+  getAuthUser,
 } from './supabase-admin';
+import { sendApprovalEmail } from '../reports/email-service';
 
 const router = Router();
 
@@ -58,7 +60,7 @@ router.get('/users', requireAuth, requireRole('admin'), async (req: Request, res
             u.name?.toLowerCase().includes(search),
         );
       }
-      if (roleFilter && ['registered', 'team', 'admin'].includes(roleFilter)) {
+      if (roleFilter && ['registered', 'active', 'team', 'admin'].includes(roleFilter)) {
         users = users.filter((u: any) => u.role_type === roleFilter);
       }
 
@@ -85,7 +87,7 @@ router.get('/users', requireAuth, requireRole('admin'), async (req: Request, res
         params.push(`%${search}%`);
         paramIdx++;
       }
-      if (roleFilter && ['registered', 'team', 'admin'].includes(roleFilter)) {
+      if (roleFilter && ['registered', 'active', 'team', 'admin'].includes(roleFilter)) {
         conditions.push(`role_type = $${paramIdx}`);
         params.push(roleFilter);
         paramIdx++;
@@ -155,8 +157,8 @@ router.patch('/users/:id/role', requireAuth, requireRole('admin'), async (req: R
     const targetId = req.params.id as string;
     const { role_type } = req.body;
 
-    if (!role_type || !['registered', 'team', 'admin'].includes(role_type)) {
-      res.status(400).json({ success: false, error: 'Invalid role_type. Must be registered, team, or admin.' });
+    if (!role_type || !['registered', 'active', 'team', 'admin'].includes(role_type)) {
+      res.status(400).json({ success: false, error: 'Invalid role_type. Must be registered, active, team, or admin.' });
       return;
     }
 
@@ -229,6 +231,54 @@ router.post('/users/:id/confirm', requireAuth, requireRole('admin'), async (req:
     res.json({ success: true, data: { message: 'Email confirmed.' } });
   } catch (e: any) {
     console.error('Admin confirm email error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+/** POST /api/admin/users/:id/approve — Approve a registered user (set to active + send email) */
+router.post('/users/:id/approve', requireAuth, requireRole('admin'), async (req: Request, res: Response) => {
+  try {
+    const targetId = req.params.id as string;
+
+    // Update role to 'active' in Supabase
+    if (isAdminApiConfigured()) {
+      await updateAppMetadata(targetId, { role_type: 'active' });
+    }
+
+    // Update local DB
+    const result = await pool.query(
+      `UPDATE users SET role_type = 'active', updated_at = NOW()
+       WHERE id = $1
+       RETURNING id, email, name, role_type`,
+      [targetId],
+    );
+
+    // Get user email for notification
+    let userEmail = result.rows[0]?.email;
+    let userName = result.rows[0]?.name;
+
+    // If no local record, fetch from Supabase
+    if (!userEmail && isAdminApiConfigured()) {
+      const authUser = await getAuthUser(targetId) as any;
+      userEmail = authUser.email;
+      userName = authUser.user_metadata?.name || authUser.user_metadata?.full_name;
+    }
+
+    // Send approval notification email
+    if (userEmail) {
+      try {
+        await sendApprovalEmail(userEmail, userName || undefined);
+      } catch (emailErr: any) {
+        console.error('Approval email failed (user was still approved):', emailErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: result.rows[0] || { id: targetId, role_type: 'active' },
+    });
+  } catch (e: any) {
+    console.error('Admin approve user error:', e);
     res.status(500).json({ success: false, error: e.message });
   }
 });

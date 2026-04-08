@@ -14,6 +14,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   isAuthenticated: boolean;
+  isActive: boolean;
   isTeam: boolean;
   isAdmin: boolean;
   needsProfile: boolean;

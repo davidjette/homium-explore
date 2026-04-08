@@ -131,6 +131,7 @@ export function useAuth() {
 
   const isAuthenticated = !!session && !!user;
   const roleType = profile?.role_type || 'registered';
+  const isActive = roleType === 'active' || roleType === 'team' || roleType === 'admin';
   const isTeam = roleType === 'team' || roleType === 'admin';
   const isAdmin = roleType === 'admin';
   const needsProfile = profile?.needsProfile === true || (isAuthenticated && !profile);
@@ -141,6 +142,7 @@ export function useAuth() {
     profile,
     loading,
     isAuthenticated,
+    isActive,
     isTeam,
     isAdmin,
     needsProfile,

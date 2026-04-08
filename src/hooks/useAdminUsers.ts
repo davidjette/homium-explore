@@ -176,6 +176,29 @@ export function useAdminUsers({ search = '', role = '', page = 1 }: UseAdminUser
     ));
   }, [session?.access_token, headers]);
 
+  const approveUser = useCallback(async (userId: string) => {
+    if (!session?.access_token) return;
+
+    try {
+      const resp = await fetch(`${API_BASE}/admin/users/${userId}/approve`, {
+        method: 'POST',
+        headers: headers(),
+      });
+
+      if (!resp.ok) {
+        const json = await resp.json().catch(() => ({}));
+        throw new Error(json.error || 'Failed to approve user');
+      }
+
+      setUsers(prev => prev.map(u =>
+        u.id === userId ? { ...u, role_type: 'active' } : u
+      ));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to approve user');
+      fetchUsers();
+    }
+  }, [session?.access_token, fetchUsers, headers]);
+
   const deleteUser = useCallback(async (userId: string) => {
     if (!session?.access_token) return;
 
@@ -199,7 +222,7 @@ export function useAdminUsers({ search = '', role = '', page = 1 }: UseAdminUser
 
   return {
     users, total, totalPages, loading, error,
-    refetch: fetchUsers, updateRole, createUser, resetPassword, confirmEmail, deleteUser,
+    refetch: fetchUsers, updateRole, approveUser, createUser, resetPassword, confirmEmail, deleteUser,
   };
 }
 

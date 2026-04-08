@@ -156,20 +156,18 @@ export function requireRole(...allowedRoles: string[]) {
 
     const userRole = req.user.role_type || 'registered';
 
-    // Admin can do everything
-    if (userRole === 'admin') {
-      next();
-      return;
-    }
+    // Role hierarchy: admin > team > active > registered
+    const ROLE_LEVEL: Record<string, number> = {
+      admin: 4,
+      team: 3,
+      active: 2,
+      registered: 1,
+    };
 
-    // Team can access team + registered resources
-    if (userRole === 'team' && allowedRoles.some(r => r === 'team' || r === 'registered')) {
-      next();
-      return;
-    }
+    const userLevel = ROLE_LEVEL[userRole] || 0;
+    const requiredLevel = Math.min(...allowedRoles.map(r => ROLE_LEVEL[r] || 0));
 
-    // Registered can only access registered resources
-    if (userRole === 'registered' && allowedRoles.includes('registered')) {
+    if (userLevel >= requiredLevel) {
       next();
       return;
     }

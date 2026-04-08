@@ -40,6 +40,64 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function RequireActive({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isActive, loading, signOut } = useAuthContext()
+
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <p className="font-body text-lightGray">Loading...</p>
+    </div>
+  )
+
+  if (!isAuthenticated) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Container>
+        <div className="max-w-md mx-auto text-center">
+          <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-8 mx-auto mb-6" />
+          <H2>Sign in to continue</H2>
+          <Body className="mt-3 mb-8 text-lightGray">
+            Create a free account to design homeownership programs, run fund models, and export reports.
+          </Body>
+          <SignInModal />
+        </div>
+      </Container>
+    </div>
+  )
+
+  if (!isActive) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Container>
+        <div className="max-w-md mx-auto text-center">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-amber-50 flex items-center justify-center">
+            <svg className="w-8 h-8 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-7 mx-auto mb-4" />
+          <H2>Your account is under review</H2>
+          <Body className="mt-3 text-lightGray">
+            Thank you for registering! A Homium administrator will review your account shortly.
+            You'll receive an email once your account has been approved.
+          </Body>
+          <Body className="mt-6 text-lightGray text-sm">
+            In the meantime, you can still{' '}
+            <a href="/explore" className="text-green hover:underline">explore programs</a>
+            {' '}on the public page.
+          </Body>
+          <button
+            onClick={() => signOut()}
+            className="mt-6 font-body text-sm text-lightGray hover:text-dark underline cursor-pointer"
+          >
+            Sign out
+          </button>
+        </div>
+      </Container>
+    </div>
+  )
+
+  return <>{children}</>
+}
+
 function RequireTeam({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isTeam, loading } = useAuthContext()
 
@@ -127,13 +185,13 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/explore" element={<Explorer />} />
           <Route path="/design" element={
-            <RequireAuth><Studio /></RequireAuth>
+            <RequireActive><Studio /></RequireActive>
           } />
           <Route path="/program" element={
-            <RequireAuth><Program /></RequireAuth>
+            <RequireActive><Program /></RequireActive>
           } />
           <Route path="/dashboard" element={
-            <RequireAuth><Dashboard /></RequireAuth>
+            <RequireActive><Dashboard /></RequireActive>
           } />
           <Route path="/data" element={
             <RequireTeam><Programs /></RequireTeam>

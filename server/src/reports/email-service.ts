@@ -19,6 +19,9 @@ function getResend(): Resend {
 
 const FROM_EMAIL = process.env.PROFORMA_FROM_EMAIL || 'onboarding@resend.dev';
 const FROM_NAME = 'Homium Pro Forma';
+const APPROVAL_FROM_EMAIL = process.env.APPROVAL_FROM_EMAIL || FROM_EMAIL;
+const APPROVAL_FROM_NAME = 'Homium';
+const EXPLORE_URL = process.env.EXPLORE_URL || 'https://explore.homium.io';
 
 export async function sendProFormaEmail(
   to: string,
@@ -71,6 +74,50 @@ export async function sendProFormaEmail(
 
   if (error) {
     throw new Error(`Email send failed: ${error.message}`);
+  }
+
+  return { id: data!.id };
+}
+
+export async function sendApprovalEmail(
+  to: string,
+  recipientName?: string,
+): Promise<{ id: string }> {
+  const greeting = recipientName ? `Hi ${recipientName},` : 'Hello,';
+
+  const { data, error } = await getResend().emails.send({
+    from: `${APPROVAL_FROM_NAME} <${APPROVAL_FROM_EMAIL}>`,
+    to: [to],
+    subject: 'Your Homium Explore account has been approved',
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <div style="background: #1A2930; padding: 24px 32px; text-align: center;">
+          <span style="font-family: Georgia, serif; font-size: 20px; color: #fff; letter-spacing: 2px;">HOMIUM</span>
+        </div>
+        <div style="padding: 32px;">
+          <p style="font-size: 15px; line-height: 1.6;">${greeting}</p>
+          <p style="font-size: 15px; line-height: 1.6;">
+            Great news — your Homium Explore account has been approved! You now have full access
+            to design homeownership programs, run fund models, and export reports.
+          </p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${EXPLORE_URL}/explore" style="display: inline-block; background: #1A7A4C; color: #fff; font-size: 15px; font-weight: 600; padding: 12px 32px; border-radius: 8px; text-decoration: none;">
+              Go to Explore
+            </a>
+          </div>
+          <p style="font-size: 13px; color: #888; margin-top: 24px;">
+            Questions? Reply to this email or contact your Homium representative.
+          </p>
+        </div>
+        <div style="background: #f5f5f5; padding: 16px 32px; font-size: 11px; color: #999; text-align: center;">
+          <p>Homium, Inc. &middot; Program Explorer</p>
+        </div>
+      </div>
+    `,
+  });
+
+  if (error) {
+    throw new Error(`Approval email send failed: ${error.message}`);
   }
 
   return { id: data!.id };

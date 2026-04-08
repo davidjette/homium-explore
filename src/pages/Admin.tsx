@@ -74,8 +74,10 @@ function UsersTab() {
 
   const {
     users, total, totalPages, loading, error, refetch,
-    updateRole, createUser, resetPassword, confirmEmail, deleteUser,
+    updateRole, approveUser, createUser, resetPassword, confirmEmail, deleteUser,
   } = useAdminUsers({ search: debouncedSearch, role: roleFilter, page })
+
+  const pendingCount = users.filter(u => u.role_type === 'registered').length
 
   const handleRoleChange = useCallback(async (userId: string, newRole: string) => {
     if (userId === profile?.id && newRole !== 'admin') {
@@ -88,6 +90,23 @@ function UsersTab() {
   return (
     <section className="py-8">
       <Container>
+        {/* Pending approval banner */}
+        {pendingCount > 0 && !roleFilter && (
+          <div className="flex items-center gap-3 mb-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
+            <span className="font-body text-sm text-amber-800 flex-1">
+              <strong>{pendingCount}</strong> new registration{pendingCount !== 1 ? 's' : ''} pending approval
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => { setRoleFilter('registered'); setPage(1) }}
+            >
+              Review
+            </Button>
+          </div>
+        )}
+
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <input
@@ -105,6 +124,7 @@ function UsersTab() {
             <option value="">All Roles</option>
             <option value="admin">Admin</option>
             <option value="team">Team</option>
+            <option value="active">Active</option>
             <option value="registered">Registered</option>
           </select>
           <Button onClick={() => setShowCreateModal(true)}>
@@ -149,6 +169,7 @@ function UsersTab() {
                       user={user}
                       isSelf={user.id === profile?.id}
                       onRoleChange={handleRoleChange}
+                      onApprove={approveUser}
                       onResetPassword={resetPassword}
                       onConfirmEmail={confirmEmail}
                       onDelete={deleteUser}
@@ -195,10 +216,11 @@ function Th({ children, className = '' }: { children: React.ReactNode; className
 
 // ─── User Row ────────────────────────────────────────────────────────
 
-function UserRow({ user, isSelf, onRoleChange, onResetPassword, onConfirmEmail, onDelete }: {
+function UserRow({ user, isSelf, onRoleChange, onApprove, onResetPassword, onConfirmEmail, onDelete }: {
   user: AdminUser
   isSelf: boolean
   onRoleChange: (userId: string, role: string) => void
+  onApprove: (userId: string) => Promise<void>
   onResetPassword: (userId: string, email: string) => Promise<void>
   onConfirmEmail: (userId: string) => Promise<void>
   onDelete: (userId: string) => void
@@ -272,6 +294,7 @@ function UserRow({ user, isSelf, onRoleChange, onResetPassword, onConfirmEmail, 
           }`}
         >
           <option value="registered">Registered</option>
+          <option value="active">Active</option>
           <option value="team">Team</option>
           <option value="admin">Admin</option>
         </select>
@@ -298,7 +321,25 @@ function UserRow({ user, isSelf, onRoleChange, onResetPassword, onConfirmEmail, 
         {actionMsg ? (
           <span className="font-body text-xs text-green">{actionMsg}</span>
         ) : (
-          <div className="relative inline-block">
+          <div className="flex items-center justify-end gap-2">
+            {user.role_type === 'registered' && (
+              <button
+                onClick={async () => {
+                  try {
+                    await onApprove(user.id)
+                    setActionMsg('Approved')
+                    setTimeout(() => setActionMsg(''), 3000)
+                  } catch {
+                    setActionMsg('Approve failed')
+                    setTimeout(() => setActionMsg(''), 3000)
+                  }
+                }}
+                className="px-3 py-1 bg-green text-white font-body text-xs font-medium rounded-md hover:bg-green/90 transition-colors cursor-pointer"
+              >
+                Approve
+              </button>
+            )}
+            <div className="relative inline-block">
             <button
               onClick={() => setMenuOpen(!menuOpen)}
               className="font-body text-xs text-lightGray hover:text-dark px-2 py-1 rounded hover:bg-sectionAlt cursor-pointer"
@@ -325,6 +366,7 @@ function UserRow({ user, isSelf, onRoleChange, onResetPassword, onConfirmEmail, 
                 </div>
               </>
             )}
+            </div>
           </div>
         )}
       </td>
@@ -427,6 +469,7 @@ function CreateUserModal({ onCreate, onClose }: {
               className="w-full px-3 py-2 border border-border rounded-lg font-body text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green/30 focus:border-green"
             >
               <option value="registered">Registered</option>
+              <option value="active">Active</option>
               <option value="team">Team</option>
               <option value="admin">Admin</option>
             </select>
