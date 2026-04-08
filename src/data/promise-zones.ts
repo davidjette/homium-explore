@@ -35,11 +35,13 @@ export const PROMISE_ZONES: PromiseZone[] = [
       [40.7125, -111.8714],
       // 3. East along 2700 S to 1300 E
       [40.7127, -111.8536],
-      // 4. South along 1300 E to Van Winkle Expressway (~3300 S)
-      [40.7010, -111.8536],
+      // 4. South along 1300 E to Van Winkle Expressway (~3580 S)
+      //    Van Winkle crosses 1300 E well south of 3300 S — near 3580 S
+      [40.6936, -111.8536],
       // 5. SW along Van Winkle Expy / Big Cottonwood Creek toward 3900 S
-      [40.6958, -111.8602],  // ~3500 S & 1100 E (geocoded)
+      [40.6920, -111.8580],  // Van Winkle ~3650 S / ~1200 E
       [40.6909, -111.8655],  // ~3700 S & 900 E (geocoded)
+      [40.6890, -111.8730],  // ~3780 S & ~750 E
       // 6. Creek meets 3900 S (west of 700 E, near State St)
       [40.6870, -111.8884],
       // 7. East along 3900 S back to S 700 E (starting point)
