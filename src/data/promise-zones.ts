@@ -36,15 +36,17 @@ export const PROMISE_ZONES: PromiseZone[] = [
       // 3. East along 2700 S to 1300 E
       [40.7127, -111.8536],
       // 4. South along 1300 E to Van Winkle Expy / Murray-Holladay Rd (~4700 S)
-      //    1300 E extends far south — past 3900 S, past Holladay, to the expressway
       [40.6743, -111.8541],  // 4500 S & 1300 E (geocoded)
       [40.6651, -111.8629],  // Van Winkle & Murray-Holladay Rd (geocoded)
-      // 5. NW along Van Winkle Expy / Big Cottonwood Creek back to 3900 S
-      [40.6743, -111.8656],  // 4500 S & 900 E (geocoded)
-      [40.6803, -111.8655],  // 4200 S & ~900 E
-      [40.6871, -111.8655],  // 3900 S & 900 E (geocoded)
-      // 6. Creek/expressway meets 3900 S, continue west to State St
-      [40.6870, -111.8884],  // 3900 S & State St (geocoded)
+      // 5. NW along Van Winkle Expy / Murray River — diagonal goes FAR northwest,
+      //    crossing I-15, all the way to the Jordan River at 3900 S
+      [40.6700, -111.8720],  // ~4300 S, ~800 E area
+      [40.6750, -111.8810],  // ~4100 S, near State St
+      [40.6800, -111.8900],  // ~4000 S, crossing I-15
+      [40.6840, -111.9000],  // west of I-15
+      [40.6860, -111.9100],  // approaching Jordan River
+      // 6. Creek meets 3900 S at Jordan River (General Holm Park)
+      [40.6875, -111.9207],  // General Holm Park (geocoded)
       // 7. East along 3900 S back to S 700 E (starting point)
       [40.6868, -111.8717],
     ],
