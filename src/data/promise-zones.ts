@@ -35,9 +35,9 @@ export const PROMISE_ZONES: PromiseZone[] = [
       [40.7125, -111.8714],
       // 3. East along 2700 S to 1300 E
       [40.7127, -111.8536],
-      // 4. South along 1300 E to Van Winkle Expy / Murray-Holladay Rd (~4700 S)
-      [40.6743, -111.8541],  // 4500 S & 1300 E (geocoded)
-      [40.6651, -111.8629],  // Van Winkle & Murray-Holladay Rd (geocoded)
+      // 4. South along 1300 E to Spring Ln / Van Winkle Expy
+      //    Goes straight south on 1300 E — diagonal starts at Spring Ln
+      [40.6604, -111.8545],  // 1300 E & Spring Ln (geocoded)
       // 5. NW along Van Winkle Expy / Murray River — diagonal goes FAR northwest,
       //    crossing I-15, all the way to the Jordan River at 3900 S
       [40.6700, -111.8720],  // ~4300 S, ~800 E area
