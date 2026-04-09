@@ -1,5 +1,5 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
-import { LandingNav, ToolNav, Footer, Container } from './design-system/Layout'
+import { LandingNav, ToolNav, PublicNav, Footer, Container } from './design-system/Layout'
 import { useAuthContext } from './components/shared/AuthProvider'
 import { H2, Body } from './design-system/Typography'
 import ProfileSetupModal from './components/shared/ProfileSetupModal'
@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
 import Programs from './pages/Programs'
 import CheckAddress from './pages/tools/CheckAddress'
+import CheckAddressIndex from './pages/public/CheckAddressIndex'
 
 function RequireActive({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isActive, loading, signOut } = useAuthContext()
@@ -148,14 +149,17 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { pathname } = useLocation()
   const isLanding = pathname === '/'
+  const isPublic = pathname.startsWith('/check-address')
   const { needsProfile, isAuthenticated, isActive, loading, signOut, profile } = useAuthContext()
 
   return (
     <div className="min-h-screen flex flex-col">
-      {isLanding ? <LandingNav /> : <ToolNav />}
+      {isLanding ? <LandingNav /> : isPublic ? <PublicNav /> : <ToolNav />}
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/check-address" element={<CheckAddressIndex />} />
+          <Route path="/check-address/udf" element={<CheckAddress headline="Utah Dream Fund + Utah's Promise Communities" />} />
           <Route path="/explore" element={<Explorer />} />
           <Route path="/design" element={
             <RequireActive><Studio /></RequireActive>

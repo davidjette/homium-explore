@@ -99,7 +99,7 @@ function FitBounds({ results }: { results: CheckResult[] }) {
   return null
 }
 
-export default function CheckAddress() {
+export default function CheckAddress({ headline = 'UDF: Check Address' }: { headline?: string }) {
   const [mode, setMode] = useState<'single' | 'batch'>('single')
   const [address, setAddress] = useState('')
   const [batchText, setBatchText] = useState('')
@@ -192,7 +192,7 @@ export default function CheckAddress() {
     <div className="py-12">
       <Container>
         <div className="mb-8">
-          <H1>UDF: Check Address</H1>
+          <H1>{headline}</H1>
           <Body className="mt-2 text-lightGray">
             Verify whether addresses fall within Promise Community qualifying zones (Millcreek &amp; South Salt Lake).
           </Body>

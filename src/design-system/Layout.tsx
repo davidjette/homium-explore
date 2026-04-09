@@ -42,6 +42,19 @@ export function LandingNav() {
   );
 }
 
+/** Public pages nav — logo only, no auth */
+export function PublicNav() {
+  return (
+    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border">
+      <div className="max-w-[1100px] mx-auto px-7 flex items-center justify-between h-16">
+        <Link to="/" className="flex items-center">
+          <img src={import.meta.env.BASE_URL + 'homium-wordmark.svg'} alt="Homium" className="h-7" />
+        </Link>
+      </div>
+    </nav>
+  );
+}
+
 /** Tool pages nav — route-based links + auth */
 export function ToolNav() {
   const { pathname } = useLocation();
