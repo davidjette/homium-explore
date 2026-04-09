@@ -9,7 +9,7 @@ export default function CheckAddressIndex() {
     <div className="py-12">
       <Container>
         <div className="text-center mb-12">
-          <Label className="text-green block mb-3">Address Eligibility</Label>
+          <Label className="text-green block mb-3">Program Eligibility</Label>
           <H2>Check Address Tools</H2>
           <Body className="mt-4 max-w-2xl mx-auto">
             Verify whether an address falls within a Homium program's qualifying zones.
