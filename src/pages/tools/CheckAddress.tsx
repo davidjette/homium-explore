@@ -65,16 +65,17 @@ function checkPointInZones(lat: number, lng: number): { inZone: boolean; zone: P
 }
 
 /**
- * Normalize Utah grid-style addresses for Google Maps geocoding.
- * Google transposes directionals unless the street number includes "St/Street".
- * "2963 S 500 E" → "2963 South 500 East St" (tells Google "500 East" is a street name)
+ * Expand abbreviated directionals in Utah grid-style addresses so Google
+ * Maps doesn't transpose them. "2963 S 500 E" → "2963 South 500 East"
  */
 function normalizeUtahAddress(address: string): string {
   const directionals: Record<string, string> = { N: 'North', S: 'South', E: 'East', W: 'West' }
+  // Match: number + space + single directional letter + space + number + space + single directional letter
+  // e.g. "2963 S 500 E" but not "500 State St"
   return address.replace(
     /(\d+)\s+([NSEW])\b\s+(\d+)\s+([NSEW])\b/gi,
     (_match, num1, dir1, num2, dir2) =>
-      `${num1} ${directionals[dir1.toUpperCase()] ?? dir1} ${num2} ${directionals[dir2.toUpperCase()] ?? dir2} St`,
+      `${num1} ${directionals[dir1.toUpperCase()] ?? dir1} ${num2} ${directionals[dir2.toUpperCase()] ?? dir2}`,
   )
 }
 
