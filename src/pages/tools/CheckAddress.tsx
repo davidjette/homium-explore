@@ -69,7 +69,9 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
   if (!apiKey) {
     throw new Error('Google Maps API key not configured. Add VITE_GOOGLE_MAPS_API_KEY to .env')
   }
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`
+  // Bias toward the Promise Zone area so Google correctly interprets Utah grid addresses
+  const bounds = '40.65,-111.93|40.73,-111.85'
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&bounds=${bounds}&key=${apiKey}`
   const resp = await fetch(url)
   const data = await resp.json()
   if (data.status === 'OK' && data.results.length > 0) {
