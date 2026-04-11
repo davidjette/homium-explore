@@ -64,12 +64,28 @@ function checkPointInZones(lat: number, lng: number): { inZone: boolean; zone: P
   return { inZone: false, zone: null }
 }
 
+/**
+ * Expand abbreviated directionals in Utah grid-style addresses so Google
+ * Maps doesn't transpose them. "2963 S 500 E" → "2963 South 500 East"
+ */
+function normalizeUtahAddress(address: string): string {
+  const directionals: Record<string, string> = { N: 'North', S: 'South', E: 'East', W: 'West' }
+  // Match: number + space + single directional letter + space + number + space + single directional letter
+  // e.g. "2963 S 500 E" but not "500 State St"
+  return address.replace(
+    /(\d+)\s+([NSEW])\b\s+(\d+)\s+([NSEW])\b/gi,
+    (_match, num1, dir1, num2, dir2) =>
+      `${num1} ${directionals[dir1.toUpperCase()] ?? dir1} ${num2} ${directionals[dir2.toUpperCase()] ?? dir2}`,
+  )
+}
+
 async function geocodeAddress(address: string): Promise<{ lat: number; lng: number; formatted: string } | null> {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
   if (!apiKey) {
     throw new Error('Google Maps API key not configured. Add VITE_GOOGLE_MAPS_API_KEY to .env')
   }
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`
+  const normalized = normalizeUtahAddress(address)
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(normalized)}&key=${apiKey}`
   const resp = await fetch(url)
   const data = await resp.json()
   if (data.status === 'OK' && data.results.length > 0) {
