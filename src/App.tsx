@@ -11,7 +11,7 @@ import Program from './pages/Program'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
 import Programs from './pages/Programs'
-import CheckAddress from './pages/tools/CheckAddress'
+import CheckAddress, { UDF_CONFIG, THHI_CONFIG } from './pages/tools/CheckAddress'
 import CheckAddressIndex from './pages/public/CheckAddressIndex'
 
 function RequireActive({ children }: { children: React.ReactNode }) {
@@ -159,7 +159,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/check-address" element={<CheckAddressIndex />} />
-          <Route path="/check-address/udf" element={<CheckAddress headline="Utah Dream Fund + Utah's Promise Communities" />} />
+          <Route path="/check-address/udf" element={<CheckAddress config={UDF_CONFIG} />} />
+          <Route path="/check-address/thhi" element={<CheckAddress config={THHI_CONFIG} />} />
           <Route path="/explore" element={<Explorer />} />
           <Route path="/design" element={
             <RequireActive><Studio /></RequireActive>
@@ -174,7 +175,10 @@ export default function App() {
             <RequireTeam><Programs /></RequireTeam>
           } />
           <Route path="/tools/check-address" element={
-            <RequireTeam><CheckAddress /></RequireTeam>
+            <RequireTeam><CheckAddress config={UDF_CONFIG} /></RequireTeam>
+          } />
+          <Route path="/tools/check-address-thhi" element={
+            <RequireTeam><CheckAddress config={THHI_CONFIG} /></RequireTeam>
           } />
           <Route path="/admin" element={
             <RequireAdmin><Admin /></RequireAdmin>
@@ -184,10 +188,10 @@ export default function App() {
       <Footer />
 
       {/* Profile setup modal — shown after first OAuth sign-in */}
-      {!loading && isAuthenticated && needsProfile && <ProfileSetupModal />}
+      {!loading && isAuthenticated && needsProfile && !isPublic && !isLanding && <ProfileSetupModal />}
 
       {/* Pending approval overlay — shown after profile setup for registered users */}
-      {!loading && isAuthenticated && !needsProfile && profile && !isActive && (
+      {!loading && isAuthenticated && !needsProfile && profile && !isActive && !isPublic && !isLanding && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-dark/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 text-center">
             <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-amber-50 flex items-center justify-center">

@@ -7,6 +7,7 @@ import { Container } from '../../design-system/Layout'
 import { H1, H2, Body, Caption } from '../../design-system/Typography'
 import { Button } from '../../design-system/Button'
 import { PROMISE_ZONES, MAP_CENTER, MAP_ZOOM, type PromiseZone } from '../../data/promise-zones'
+import { DETROIT_ZONES, DETROIT_MAP_CENTER, DETROIT_MAP_ZOOM, THHI_QUALIFYING_ZIPS } from '../../data/detroit-zones'
 import 'leaflet/dist/leaflet.css'
 
 // Fix Leaflet default marker icons (broken by bundlers)
@@ -44,6 +45,13 @@ const redIcon = new L.Icon({
   className: 'leaflet-marker-red',
 })
 
+interface GeoResult {
+  lat: number
+  lng: number
+  formatted: string
+  zip: string | null
+}
+
 interface CheckResult {
   address: string
   lat: number
@@ -51,12 +59,26 @@ interface CheckResult {
   inZone: boolean
   zoneName: string | null
   formattedAddress: string
+  zip: string | null
 }
 
-function checkPointInZones(lat: number, lng: number): { inZone: boolean; zone: PromiseZone | null } {
-  const pt = point([lng, lat]) // turf uses [lng, lat]
-  for (const zone of PROMISE_ZONES) {
-    const poly = polygon([zone.polygon.map(([la, ln]) => [ln, la])]) // convert to [lng, lat]
+export interface CheckAddressConfig {
+  zones: PromiseZone[]
+  mapCenter: [number, number]
+  mapZoom: number
+  geocodeBounds: string
+  headline: string
+  subtitle: string
+  placeholderSingle: string
+  placeholderBatch: string
+  csvPrefix: string
+  checkEligibility: (lat: number, lng: number, geo: GeoResult) => { inZone: boolean; zoneName: string | null }
+}
+
+function checkPointInZones(zones: PromiseZone[], lat: number, lng: number): { inZone: boolean; zone: PromiseZone | null } {
+  const pt = point([lng, lat])
+  for (const zone of zones) {
+    const poly = polygon([zone.polygon.map(([la, ln]) => [ln, la])])
     if (booleanPointInPolygon(pt, poly)) {
       return { inZone: true, zone }
     }
@@ -64,44 +86,81 @@ function checkPointInZones(lat: number, lng: number): { inZone: boolean; zone: P
   return { inZone: false, zone: null }
 }
 
-async function geocodeAddress(address: string): Promise<{ lat: number; lng: number; formatted: string } | null> {
+async function geocodeAddress(address: string, bounds: string): Promise<GeoResult | null> {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
   if (!apiKey) {
     throw new Error('Google Maps API key not configured. Add VITE_GOOGLE_MAPS_API_KEY to .env')
   }
-  // Bias toward the Promise Zone area so Google correctly interprets Utah grid addresses
-  const bounds = '40.65,-111.93|40.73,-111.85'
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&bounds=${bounds}&key=${apiKey}`
   const resp = await fetch(url)
   const data = await resp.json()
   if (data.status === 'OK' && data.results.length > 0) {
     const result = data.results[0]
+    const zipComponent = result.address_components?.find(
+      (c: { types: string[] }) => c.types.includes('postal_code')
+    )
     return {
       lat: result.geometry.location.lat,
       lng: result.geometry.location.lng,
       formatted: result.formatted_address,
+      zip: zipComponent?.short_name ?? null,
     }
   }
   return null
 }
 
-/** Adjusts map bounds to fit all markers + zones */
-function FitBounds({ results }: { results: CheckResult[] }) {
+export const UDF_CONFIG: CheckAddressConfig = {
+  zones: PROMISE_ZONES,
+  mapCenter: MAP_CENTER,
+  mapZoom: MAP_ZOOM,
+  geocodeBounds: '40.65,-111.93|40.73,-111.85',
+  headline: 'Utah Dream Fund + Utah\'s Promise Communities',
+  subtitle: 'Promise Community qualifying zones (Millcreek & South Salt Lake)',
+  placeholderSingle: 'Enter address (e.g., 3300 S 900 E, Millcreek, UT)',
+  placeholderBatch: '3300 S 900 E, Millcreek, UT\n100 S Main St, Salt Lake City, UT\n2500 S State St, South Salt Lake, UT',
+  csvPrefix: 'promise-zone-check-',
+  checkEligibility: (lat, lng) => {
+    const { inZone, zone } = checkPointInZones(PROMISE_ZONES, lat, lng)
+    return { inZone, zoneName: zone?.name ?? null }
+  },
+}
+
+export const THHI_CONFIG: CheckAddressConfig = {
+  zones: DETROIT_ZONES,
+  mapCenter: DETROIT_MAP_CENTER,
+  mapZoom: DETROIT_MAP_ZOOM,
+  geocodeBounds: '42.25,-83.30|42.45,-82.90',
+  headline: 'THHI Detroit: Check Address',
+  subtitle: 'THHI qualifying zip codes in Wayne County, MI',
+  placeholderSingle: 'Enter address (e.g., 12345 Livernois Ave, Detroit, MI)',
+  placeholderBatch: '12345 Livernois Ave, Detroit, MI\n5678 Grand River Ave, Detroit, MI\n900 Michigan Ave, Detroit, MI',
+  csvPrefix: 'thhi-zone-check-',
+  checkEligibility: (lat, lng, geo) => {
+    if (geo.zip) {
+      const match = THHI_QUALIFYING_ZIPS.includes(geo.zip)
+      return { inZone: match, zoneName: match ? 'THHI Qualifying Area' : null }
+    }
+    // Fallback when Google doesn't return a zip: check coordinates against boundary
+    const { inZone, zone } = checkPointInZones(DETROIT_ZONES, lat, lng)
+    return { inZone, zoneName: zone?.name ?? null }
+  },
+}
+
+function FitBounds({ results, zones }: { results: CheckResult[]; zones: PromiseZone[] }) {
   const map = useMap()
   const prevCount = useRef(0)
 
   if (results.length > 0 && results.length !== prevCount.current) {
     prevCount.current = results.length
     const bounds = L.latLngBounds(results.map(r => [r.lat, r.lng]))
-    // Also include zone polygons
-    PROMISE_ZONES.forEach(z => z.polygon.forEach(([lat, lng]) => bounds.extend([lat, lng])))
+    zones.forEach(z => z.polygon.forEach(([lat, lng]) => bounds.extend([lat, lng])))
     map.fitBounds(bounds, { padding: [40, 40] })
   }
 
   return null
 }
 
-export default function CheckAddress({ headline = 'UDF: Check Address' }: { headline?: string }) {
+export default function CheckAddress({ config }: { config: CheckAddressConfig }) {
   const [mode, setMode] = useState<'single' | 'batch'>('single')
   const [address, setAddress] = useState('')
   const [batchText, setBatchText] = useState('')
@@ -114,26 +173,27 @@ export default function CheckAddress({ headline = 'UDF: Check Address' }: { head
     setLoading(true)
     setError(null)
     try {
-      const geo = await geocodeAddress(address.trim())
+      const geo = await geocodeAddress(address.trim(), config.geocodeBounds)
       if (!geo) {
         setError(`Could not geocode: "${address}"`)
         return
       }
-      const { inZone, zone } = checkPointInZones(geo.lat, geo.lng)
+      const { inZone, zoneName } = config.checkEligibility(geo.lat, geo.lng, geo)
       setResults([{
         address: address.trim(),
         lat: geo.lat,
         lng: geo.lng,
         inZone,
-        zoneName: zone?.name ?? null,
+        zoneName,
         formattedAddress: geo.formatted,
+        zip: geo.zip,
       }])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Geocoding failed')
     } finally {
       setLoading(false)
     }
-  }, [address])
+  }, [address, config])
 
   const handleBatchCheck = useCallback(async () => {
     const addresses = batchText.split('\n').map(a => a.trim()).filter(Boolean)
@@ -145,19 +205,20 @@ export default function CheckAddress({ headline = 'UDF: Check Address' }: { head
 
     for (const addr of addresses) {
       try {
-        const geo = await geocodeAddress(addr)
+        const geo = await geocodeAddress(addr, config.geocodeBounds)
         if (!geo) {
           errors.push(`Could not geocode: "${addr}"`)
           continue
         }
-        const { inZone, zone } = checkPointInZones(geo.lat, geo.lng)
+        const { inZone, zoneName } = config.checkEligibility(geo.lat, geo.lng, geo)
         batchResults.push({
           address: addr,
           lat: geo.lat,
           lng: geo.lng,
           inZone,
-          zoneName: zone?.name ?? null,
+          zoneName,
           formattedAddress: geo.formatted,
+          zip: geo.zip,
         })
       } catch (e) {
         errors.push(`Error for "${addr}": ${e instanceof Error ? e.message : 'unknown'}`)
@@ -169,23 +230,23 @@ export default function CheckAddress({ headline = 'UDF: Check Address' }: { head
       setError(errors.join('\n'))
     }
     setLoading(false)
-  }, [batchText])
+  }, [batchText, config])
 
   const handleExportCSV = useCallback(() => {
     if (results.length === 0) return
-    const header = 'Address,Status,Zone,Latitude,Longitude,Formatted Address'
+    const header = 'Address,Status,Zone,Zip,Latitude,Longitude,Formatted Address'
     const rows = results.map(r =>
-      `"${r.address}","${r.inZone ? 'IN ZONE' : 'NOT IN ZONE'}","${r.zoneName ?? ''}",${r.lat},${r.lng},"${r.formattedAddress}"`
+      `"${r.address}","${r.inZone ? 'IN ZONE' : 'NOT IN ZONE'}","${r.zoneName ?? ''}","${r.zip ?? ''}",${r.lat},${r.lng},"${r.formattedAddress}"`
     )
     const csv = [header, ...rows].join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `promise-zone-check-${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `${config.csvPrefix}${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
-  }, [results])
+  }, [results, config.csvPrefix])
 
   const inCount = results.filter(r => r.inZone).length
   const outCount = results.filter(r => !r.inZone).length
@@ -194,9 +255,9 @@ export default function CheckAddress({ headline = 'UDF: Check Address' }: { head
     <div className="py-12">
       <Container>
         <div className="mb-8">
-          <H1>{headline}</H1>
+          <H1>{config.headline}</H1>
           <Body className="mt-2 text-lightGray">
-            Verify whether addresses fall within Promise Community qualifying zones (Millcreek &amp; South Salt Lake).
+            Verify whether addresses fall within {config.subtitle}.
           </Body>
         </div>
 
@@ -229,7 +290,7 @@ export default function CheckAddress({ headline = 'UDF: Check Address' }: { head
                 value={address}
                 onChange={e => setAddress(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSingleCheck()}
-                placeholder="Enter address (e.g., 3300 S 900 E, Millcreek, UT)"
+                placeholder={config.placeholderSingle}
                 className="flex-1 px-4 py-3 border border-border rounded-lg font-body text-sm focus:outline-none focus:ring-2 focus:ring-green/30 focus:border-green"
               />
               <Button onClick={handleSingleCheck} disabled={loading || !address.trim()}>
@@ -242,7 +303,7 @@ export default function CheckAddress({ headline = 'UDF: Check Address' }: { head
               <textarea
                 value={batchText}
                 onChange={e => setBatchText(e.target.value)}
-                placeholder={"3300 S 900 E, Millcreek, UT\n100 S Main St, Salt Lake City, UT\n2500 S State St, South Salt Lake, UT"}
+                placeholder={config.placeholderBatch}
                 rows={6}
                 className="w-full px-4 py-3 border border-border rounded-lg font-body text-sm focus:outline-none focus:ring-2 focus:ring-green/30 focus:border-green resize-y"
               />
@@ -291,7 +352,7 @@ export default function CheckAddress({ headline = 'UDF: Check Address' }: { head
                 </div>
                 <Body className="text-dark font-medium">{results[0].formattedAddress}</Body>
                 <Caption className="mt-1 text-lightGray">
-                  {results[0].lat.toFixed(6)}, {results[0].lng.toFixed(6)}
+                  Zip: {results[0].zip ?? 'not detected'} | {results[0].lat.toFixed(6)}, {results[0].lng.toFixed(6)}
                 </Caption>
               </div>
             )}
@@ -309,6 +370,7 @@ export default function CheckAddress({ headline = 'UDF: Check Address' }: { head
                       <tr className="bg-sectionAlt">
                         <th className="text-left px-4 py-2 font-body text-xs uppercase tracking-wider text-gray">Status</th>
                         <th className="text-left px-4 py-2 font-body text-xs uppercase tracking-wider text-gray">Address</th>
+                        <th className="text-left px-4 py-2 font-body text-xs uppercase tracking-wider text-gray">Zip</th>
                         <th className="text-left px-4 py-2 font-body text-xs uppercase tracking-wider text-gray">Zone</th>
                         <th className="text-left px-4 py-2 font-body text-xs uppercase tracking-wider text-gray">Coordinates</th>
                       </tr>
@@ -324,7 +386,8 @@ export default function CheckAddress({ headline = 'UDF: Check Address' }: { head
                             </span>
                           </td>
                           <td className="px-4 py-3 font-body text-sm text-dark">{r.formattedAddress}</td>
-                          <td className="px-4 py-3 font-body text-sm text-gray">{r.zoneName ?? '—'}</td>
+                          <td className="px-4 py-3 font-body text-sm text-gray font-medium">{r.zip ?? '-'}</td>
+                          <td className="px-4 py-3 font-body text-sm text-gray">{r.zoneName ?? '-'}</td>
                           <td className="px-4 py-3 font-body text-xs text-lightGray">{r.lat.toFixed(5)}, {r.lng.toFixed(5)}</td>
                         </tr>
                       ))}
@@ -339,8 +402,8 @@ export default function CheckAddress({ headline = 'UDF: Check Address' }: { head
         {/* Map */}
         <div className="border border-border rounded-lg overflow-hidden" style={{ height: 500 }}>
           <MapContainer
-            center={MAP_CENTER}
-            zoom={MAP_ZOOM}
+            center={config.mapCenter}
+            zoom={config.mapZoom}
             style={{ height: '100%', width: '100%' }}
             scrollWheelZoom={true}
           >
@@ -348,8 +411,7 @@ export default function CheckAddress({ headline = 'UDF: Check Address' }: { head
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {/* Zone polygons */}
-            {PROMISE_ZONES.map(zone => (
+            {config.zones.map(zone => (
               <Polygon
                 key={zone.id}
                 positions={zone.polygon}
@@ -367,7 +429,6 @@ export default function CheckAddress({ headline = 'UDF: Check Address' }: { head
                 </Popup>
               </Polygon>
             ))}
-            {/* Result markers */}
             {results.map((r, i) => (
               <Marker
                 key={i}
@@ -376,18 +437,18 @@ export default function CheckAddress({ headline = 'UDF: Check Address' }: { head
               >
                 <Popup>
                   <strong>{r.inZone ? 'IN ZONE' : 'NOT IN ZONE'}</strong>
-                  {r.zoneName && <> — {r.zoneName}</>}<br />
+                  {r.zoneName && <> - {r.zoneName}</>}<br />
                   {r.formattedAddress}
                 </Popup>
               </Marker>
             ))}
-            <FitBounds results={results} />
+            <FitBounds results={results} zones={config.zones} />
           </MapContainer>
         </div>
 
         {/* Zone legend */}
         <div className="mt-4 flex items-center gap-6">
-          {PROMISE_ZONES.map(zone => (
+          {config.zones.map(zone => (
             <div key={zone.id} className="flex items-center gap-2">
               <div className="w-4 h-3 rounded-sm border-2" style={{ borderColor: zone.color, backgroundColor: zone.fillColor }} />
               <Caption>{zone.name}</Caption>

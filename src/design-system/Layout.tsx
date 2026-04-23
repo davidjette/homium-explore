@@ -84,6 +84,7 @@ export function ToolNav() {
                 active={pathname.startsWith('/tools')}
                 items={[
                   { label: 'UDF: Check Address', to: '/tools/check-address' },
+                  { label: 'THHI: Check Address', to: '/tools/check-address-thhi' },
                 ]}
               />
             )}
