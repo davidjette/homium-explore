@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { MapContainer, TileLayer, Polygon, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
-import { point, polygon } from '@turf/helpers'
+import { point, polygon, multiPolygon } from '@turf/helpers'
 import { Container } from '../../design-system/Layout'
 import { H1, H2, Body, Caption } from '../../design-system/Typography'
 import { Button } from '../../design-system/Button'
@@ -78,9 +78,18 @@ export interface CheckAddressConfig {
 function checkPointInZones(zones: PromiseZone[], lat: number, lng: number): { inZone: boolean; zone: PromiseZone | null } {
   const pt = point([lng, lat])
   for (const zone of zones) {
-    const poly = polygon([zone.polygon.map(([la, ln]) => [ln, la])])
-    if (booleanPointInPolygon(pt, poly)) {
-      return { inZone: true, zone }
+    if (zone.multiPolygon) {
+      const turfCoords = zone.multiPolygon.map(poly =>
+        poly.map(ring => ring.map(([la, ln]) => [ln, la] as [number, number]))
+      )
+      if (booleanPointInPolygon(pt, multiPolygon(turfCoords))) {
+        return { inZone: true, zone }
+      }
+    } else {
+      const poly = polygon([zone.polygon.map(([la, ln]) => [ln, la])])
+      if (booleanPointInPolygon(pt, poly)) {
+        return { inZone: true, zone }
+      }
     }
   }
   return { inZone: false, zone: null }
@@ -136,13 +145,12 @@ export const THHI_CONFIG: CheckAddressConfig = {
   placeholderBatch: '12345 Livernois Ave, Detroit, MI\n5678 Grand River Ave, Detroit, MI\n900 Michigan Ave, Detroit, MI',
   csvPrefix: 'thhi-zone-check-',
   checkEligibility: (lat, lng, geo) => {
-    if (geo.zip) {
-      const match = THHI_QUALIFYING_ZIPS.includes(geo.zip)
-      return { inZone: match, zoneName: match ? 'THHI Qualifying Area' : null }
+    const { inZone } = checkPointInZones(DETROIT_ZONES, lat, lng)
+    if (!inZone) return { inZone: false, zoneName: null }
+    if (geo.zip && !THHI_QUALIFYING_ZIPS.includes(geo.zip)) {
+      return { inZone: false, zoneName: null }
     }
-    // Fallback when Google doesn't return a zip: check coordinates against boundary
-    const { inZone, zone } = checkPointInZones(DETROIT_ZONES, lat, lng)
-    return { inZone, zoneName: zone?.name ?? null }
+    return { inZone: true, zoneName: 'THHI Qualifying Area' }
   },
 }
 
@@ -153,7 +161,13 @@ function FitBounds({ results, zones }: { results: CheckResult[]; zones: PromiseZ
   if (results.length > 0 && results.length !== prevCount.current) {
     prevCount.current = results.length
     const bounds = L.latLngBounds(results.map(r => [r.lat, r.lng]))
-    zones.forEach(z => z.polygon.forEach(([lat, lng]) => bounds.extend([lat, lng])))
+    zones.forEach(z => {
+      if (z.multiPolygon) {
+        z.multiPolygon.forEach(poly => poly.forEach(ring => ring.forEach(([lat, lng]) => bounds.extend([lat, lng]))))
+      } else {
+        z.polygon.forEach(([lat, lng]) => bounds.extend([lat, lng]))
+      }
+    })
     map.fitBounds(bounds, { padding: [40, 40] })
   }
 
@@ -414,7 +428,7 @@ export default function CheckAddress({ config }: { config: CheckAddressConfig })
             {config.zones.map(zone => (
               <Polygon
                 key={zone.id}
-                positions={zone.polygon}
+                positions={zone.multiPolygon ?? zone.polygon}
                 pathOptions={{
                   color: zone.color,
                   fillColor: zone.fillColor,

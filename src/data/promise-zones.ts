@@ -16,6 +16,7 @@ export interface PromiseZone {
   name: string
   description: string
   polygon: [number, number][] // [lat, lng] pairs, closed ring
+  multiPolygon?: [number, number][][][] // [polygon[ring[point]]] — multi-polygon with holes
   color: string
   fillColor: string
 }
